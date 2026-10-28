@@ -20,9 +20,11 @@ function applyLang(lang) {
   });
   const brand = document.querySelector('.brand');
   brand.title = brand.dataset[lang === 'ko' ? 'titleKo' : 'titleEn'];
-  const hint = document.getElementById('monitor-hint');
-  hint.textContent = hint.dataset[lang];
+  if (shown) hint.textContent = shown.dataset[lang];
 }
+
+const hint = document.getElementById('hint');
+let shown = null;
 
 let lang = readLang();
 applyLang(lang);
@@ -39,7 +41,11 @@ document.querySelectorAll('.lang-toggle button').forEach((button) => {
   });
 });
 
-// Monitor has no screen yet — say so in place
-document.getElementById('monitor').addEventListener('click', () => {
-  document.getElementById('monitor-hint').hidden = false;
+// Neither screen is online yet — say so in place
+document.querySelectorAll('.row-buttons .button').forEach((button) => {
+  button.addEventListener('click', () => {
+    shown = button;
+    hint.textContent = button.dataset[lang];
+    hint.hidden = false;
+  });
 });
