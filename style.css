@@ -25,15 +25,14 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; }
-#root { height: 100%; }
-.app { display: flex; flex-direction: column; min-height: 100%; }
+body { display: flex; flex-direction: column; min-height: 100%; }
 
 /* Header — logo centered; equal side columns keep it truly centered whatever sits on the right */
 .bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 56px; padding: 0 16px; border-bottom: 1px solid var(--border); }
 .side.end { justify-self: end; }
 .brand { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
 .brand .logo { display: block; margin-right: 2px; }
-.brand .logo text { font-family: var(--font-sans); }
+.brand .logo .letters { font-family: var(--font-sans); fill: var(--background); }
 .brand .wordmark { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
 .brand .version { color: var(--muted-foreground); font-size: 12px; margin-left: 2px; }
 

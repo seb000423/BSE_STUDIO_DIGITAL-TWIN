@@ -4,10 +4,43 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BSE : Digital Twin</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <header class="bar">
+      <span class="side"></span>
+      <a class="brand" href="index.html" data-title-ko="처음 화면으로" data-title-en="Back to start">
+        <!-- BSE mark: a triangle with one letter on each vertex (B top, S bottom-left, E bottom-right) -->
+        <svg class="logo" width="34" height="34" viewBox="0 0 42 38" aria-hidden="true">
+          <polygon points="21,8 8,30 34,30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+          <g fill="currentColor"><circle cx="21" cy="8" r="7" /><circle cx="8" cy="30" r="7" /><circle cx="34" cy="30" r="7" /></g>
+          <g class="letters" text-anchor="middle" font-size="9" font-weight="800">
+            <text x="21" y="8" dy="0.36em">B</text><text x="8" y="30" dy="0.36em">S</text><text x="34" y="30" dy="0.36em">E</text>
+          </g>
+        </svg>
+        <span class="wordmark">BSE : Digital Twin</span>
+        <span class="version">beta</span>
+      </a>
+      <span class="side end">
+        <span class="lang-toggle" role="group" aria-label="Language">
+          <button data-lang="ko">KR</button>
+          <button data-lang="en">EN</button>
+        </span>
+      </span>
+    </header>
+
+    <main class="welcome">
+      <span class="title">BSE : Digital Twin</span>
+      <h1>Build · Simulate · Execute</h1>
+      <div class="row-buttons">
+        <a class="button" href="http://localhost:5173/">Build</a>
+        <button class="button" id="monitor">Monitor</button>
+      </div>
+      <p class="hint" id="monitor-hint" hidden data-ko="모니터링 화면은 준비 중입니다." data-en="The monitoring view is coming soon."></p>
+    </main>
+
+    <script src="script.js"></script>
   </body>
 </html>
