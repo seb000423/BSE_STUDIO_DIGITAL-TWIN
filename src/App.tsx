@@ -1,12 +1,12 @@
 /**
- * Landing page — logo centered at the top, KR / EN on the right, and two entry points:
- * "Start Build" (authoring) and "Monitoring" (the digital-twin view, not built yet).
+ * BSE : Digital Twin landing page — logo centered at the top, KR / EN on the right, and two entry points:
+ * "Build" (author the twin in BSE Studio) and "Monitor" (the live digital-twin view, not built yet).
  */
 import { useEffect, useState } from 'react';
 import { readLang, texts, writeLang, type Lang } from './i18n';
 import { Logo } from './Logo';
 
-/** Where "Start Build" goes — BSE Studio's authoring screen. Override with VITE_BUILD_URL */
+/** Where "Build" goes — BSE Studio's authoring screen. Override with VITE_BUILD_URL */
 const BUILD_URL = import.meta.env.VITE_BUILD_URL ?? 'http://localhost:5173/';
 
 export function App(): React.JSX.Element {
@@ -29,8 +29,7 @@ export function App(): React.JSX.Element {
         <span className="side" />
         <a className="brand" href="/" title={text.home}>
           <Logo />
-          <span className="wordmark">BSE</span>
-          <span className="product">Studio</span>
+          <span className="wordmark">BSE : Digital Twin</span>
           <span className="version">beta</span>
         </a>
         <span className="side end">
@@ -45,14 +44,14 @@ export function App(): React.JSX.Element {
       </header>
 
       <main className="welcome">
-        <span className="title">BSE Studio</span>
+        <span className="title">BSE : Digital Twin</span>
         <h1>Build · Simulate · Execute</h1>
         <div className="row-buttons">
-          <a className="button primary" href={BUILD_URL}>
-            Start Build
+          <a className="button" href={BUILD_URL}>
+            Build
           </a>
           <button className="button" onClick={() => setMonitoringSoon(true)}>
-            Monitoring
+            Monitor
           </button>
         </div>
         {monitoringSoon && <p className="hint">{text.monitoringSoon}</p>}

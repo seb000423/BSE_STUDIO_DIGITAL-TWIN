@@ -1,6 +1,7 @@
 /**
  * BSE mark — a triangle (geometry) with one letter on each vertex: B on top, S bottom-left, E bottom-right.
  * Drawn in currentColor so it follows light / dark mode; letters are cut out in the page background.
+ * public/favicon.svg is the same drawing on a dark tile.
  */
 const VERTICES = [
   { letter: 'B', x: 21, y: 8 },
