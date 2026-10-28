@@ -3,8 +3,8 @@
  * "Start Build" (authoring) and "Monitoring" (the digital-twin view, not built yet).
  */
 import { useEffect, useState } from 'react';
-import { LayoutGrid } from 'lucide-react';
 import { readLang, texts, writeLang, type Lang } from './i18n';
+import { Logo } from './Logo';
 
 /** Where "Start Build" goes — BSE Studio's authoring screen. Override with VITE_BUILD_URL */
 const BUILD_URL = import.meta.env.VITE_BUILD_URL ?? 'http://localhost:5173/';
@@ -28,7 +28,7 @@ export function App(): React.JSX.Element {
       <header className="bar">
         <span className="side" />
         <a className="brand" href="/" title={text.home}>
-          <LayoutGrid aria-hidden="true" />
+          <Logo />
           <span className="wordmark">BSE</span>
           <span className="product">Studio</span>
           <span className="version">beta</span>
