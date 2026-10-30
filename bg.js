@@ -76,13 +76,16 @@ for (let x = -18; x <= 26; x += 2.2) {
 }
 for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, cell);
 
-// The fences, either side of the belt; both ends stay open for the conveyor
+// Safety fences along both sides of the belt, set back from it: posts, top and bottom rails, and upright mesh bars.
+// Both ends stay open for the conveyor.
 const FENCE_H = 6;
-for (const z of [7.5, 16.5]) {
-  for (const x of [-22, 30]) box(0.5, FENCE_H, 0.5, x, 0, z, cell);
-  for (const y of [0.5, FENCE_H / 2, FENCE_H]) box(52, 0.2, 0.2, 4, y, z, cell);
-  for (let x = -18; x < 30; x += 4) box(0.05, FENCE_H, 0.05, x, 0, z, cell);
+const fenceBars = [];
+for (const z of [6, 18]) {
+  for (let x = -22; x <= 30; x += 8) box(0.45, FENCE_H, 0.45, x, 0, z, cell);
+  for (const y of [0.4, FENCE_H]) box(52, 0.2, 0.2, 4, y, z, cell);
+  for (let x = -22; x <= 30; x += 2) fenceBars.push(x, 0.4, z, x, FENCE_H, z);
 }
+wires(fenceBars, cell);
 
 // Robot arms well behind the back fence, facing the conveyor, so they stand clear of it. Same build, three sizes, each with a tool for its job;
 // joints are pivots so they can move.
@@ -145,9 +148,9 @@ const arms = [
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 6, 7.5) },
-  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(21, 10, -9) },
-  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
+  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 6, 6) },
+  { group: robots, lift: 10, part: 'robot', anchor: new THREE.Vector3(21, 10, -9) },
+  { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -210,10 +213,10 @@ function fit() {
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
   const closed = Math.min(roomH / 68, W / 112);
-  const open = Math.min(roomH / 98, W / 132);
+  const open = Math.min(roomH / 106, W / 132);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
-  const y = 9 + apart * 15;
+  const y = 9 + apart * 18;
   camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
   camera.lookAt(0, y, 0);
   camera.setViewOffset(W, H, 0, H / 2 - (roomMid - scrollY), W, H);
