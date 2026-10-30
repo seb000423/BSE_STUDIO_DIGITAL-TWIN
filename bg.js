@@ -13,6 +13,7 @@ const still = matchMedia('(prefers-reduced-motion: reduce)');
 // 1. Drawing kit — every part is outlines over solid faces, so lines behind a part stay hidden
 const ink = new THREE.LineBasicMaterial({ transparent: true });
 const fineInk = new THREE.LineBasicMaterial({ transparent: true });
+const meshInk = new THREE.LineBasicMaterial({ transparent: true });
 const paper = new THREE.MeshBasicMaterial({ transparent: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
 function outline(geometry, x = 0, y = 0, z = 0, parent) {
   const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), ink);
@@ -76,16 +77,18 @@ for (let x = -18; x <= 26; x += 2.2) {
 }
 for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, cell);
 
-// Safety fences along both sides of the belt, set back from it: posts, top and bottom rails, and upright mesh bars.
-// Both ends stay open for the conveyor.
-const FENCE_H = 6;
-const fenceBars = [];
-for (const z of [6, 18]) {
+// Grid-mesh safety fences along both sides of the belt, well clear of it: posts, top and bottom rails, and a fine mesh
+// drawn lighter so the belt still reads through it. Both ends stay open for the conveyor.
+const FENCE_H = 12;
+const MESH = 1.5;
+const mesh = [];
+for (const z of [2, 22]) {
   for (let x = -22; x <= 30; x += 8) box(0.45, FENCE_H, 0.45, x, 0, z, cell);
-  for (const y of [0.4, FENCE_H]) box(52, 0.2, 0.2, 4, y, z, cell);
-  for (let x = -22; x <= 30; x += 2) fenceBars.push(x, 0.4, z, x, FENCE_H, z);
+  for (const y of [0.3, FENCE_H]) box(52, 0.2, 0.2, 4, y, z, cell);
+  for (let x = -22; x <= 30; x += MESH) mesh.push(x, 0.3, z, x, FENCE_H, z);
+  for (let y = MESH; y < FENCE_H; y += MESH) mesh.push(-22, y, z, 30, y, z);
 }
-wires(fenceBars, cell);
+wires(mesh, cell).material = meshInk;
 
 // Robot arms well behind the back fence, facing the conveyor, so they stand clear of it. Same build, three sizes, each with a tool for its job;
 // joints are pivots so they can move.
@@ -140,16 +143,16 @@ const torch = (w) => {
 };
 const robots = new THREE.Group();
 const arms = [
-  arm({ x: -16, z: -9, size: 1.25, stand: 0, tool: suction }),
-  arm({ x: 0, z: -9, size: 0.9, stand: 3, tool: torch }),
-  arm({ x: 14, z: -9, size: 0.6, stand: 2.5, tool: gripper }),
+  arm({ x: -16, z: -14, size: 1.25, stand: 0, tool: suction }),
+  arm({ x: 0, z: -14, size: 0.9, stand: 3, tool: torch }),
+  arm({ x: 14, z: -14, size: 0.6, stand: 2.5, tool: gripper }),
 ];
 
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 6, 6) },
-  { group: robots, lift: 10, part: 'robot', anchor: new THREE.Vector3(21, 10, -9) },
+  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 11, 2) },
+  { group: robots, lift: 10, part: 'robot', anchor: new THREE.Vector3(21, 10, -14) },
   { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
 for (const layer of layers) {
@@ -176,6 +179,7 @@ function paint() {
   const css = getComputedStyle(document.documentElement);
   ink.color.set(css.getPropertyValue('--line').trim());
   fineInk.color.copy(ink.color);
+  meshInk.color.copy(ink.color);
   paper.color.set(css.getPropertyValue('--paper').trim());
 }
 
@@ -237,6 +241,7 @@ function draw() {
   }
   ink.opacity = 0.8 * drawing;
   fineInk.opacity = 0.2 * drawing;
+  meshInk.opacity = 0.35 * drawing;
   paper.opacity = drawing;
   aim(lifted);
   renderer.render(scene, camera);
