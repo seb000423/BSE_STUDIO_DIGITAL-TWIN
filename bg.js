@@ -1,6 +1,6 @@
 // Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
-// It sits between the title and the buttons and, on a loop, its parts lift off one another with a name label on each,
-// then come back together. The camera never moves. Behind the title, the BSE logo stays on as a halftone of dots.
+// It sits between the title and the buttons; pointing at it (or, on touch screens, a loop) lifts its parts off one
+// another with a name label on each, and they come back together. The camera never moves. Behind the title, the BSE logo stays on as a halftone of dots.
 // three.js draws the model, anime.js times the loop. Both load from a CDN; no build step.
 import * as THREE from 'three';
 import { animate, createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
@@ -275,17 +275,29 @@ function fillDots() {
   });
 }
 
-// 6. On load the drawing and the logo come in; then the drawing comes apart, is named, and goes back together, round again
+// 6. On load the drawing and the logo come in. With a mouse, pointing at the drawing opens it, with its labels, and moving
+// away closes it. Touch screens have nothing to point with, so there it opens and closes by itself on a loop.
 fit();
 fillDots();
 draw();
 if (!still.matches) {
-  animate(state, { drawing: 1, duration: 900, ease: 'outCubic' });
+  animate(state, { drawing: 1, duration: 900, ease: 'outCubic', onUpdate: draw });
   animate(state, { logo: 1, duration: 1800, ease: 'linear', onUpdate: fillDots });
-  createTimeline({ loop: true, loopDelay: 1400 })
-    .add(state, { apart: 1, duration: 2400, ease: 'inOutCubic' }, 1600)
-    .add(state, { named: 1, duration: 700, ease: 'outQuad' }, 3400)
-    .add(state, { named: 0, duration: 400, ease: 'inQuad' }, 7200)
-    .add(state, { apart: 0, duration: 2200, ease: 'inOutCubic' }, 7400);
-  renderer.setAnimationLoop(draw);
+  if (matchMedia('(hover: hover)').matches) {
+    room.addEventListener('pointerenter', () => {
+      animate(state, { apart: 1, duration: 1200, ease: 'inOutCubic', onUpdate: draw });
+      animate(state, { named: 1, duration: 500, delay: 800, ease: 'outQuad', onUpdate: draw });
+    });
+    room.addEventListener('pointerleave', () => {
+      animate(state, { named: 0, duration: 200, ease: 'inQuad', onUpdate: draw });
+      animate(state, { apart: 0, duration: 1000, ease: 'inOutCubic', onUpdate: draw });
+    });
+  } else {
+    createTimeline({ loop: true, loopDelay: 1400 })
+      .add(state, { apart: 1, duration: 2400, ease: 'inOutCubic' }, 1600)
+      .add(state, { named: 1, duration: 700, ease: 'outQuad' }, 3400)
+      .add(state, { named: 0, duration: 400, ease: 'inQuad' }, 7200)
+      .add(state, { apart: 0, duration: 2200, ease: 'inOutCubic' }, 7400);
+    renderer.setAnimationLoop(draw);
+  }
 }
