@@ -1,11 +1,10 @@
-/* Blueprint look: deep navy, pale lines, a drafting grid; one theme for everyone; near-square corners */
+/* Blueprint look: deep navy and pale lines; one theme for everyone; near-square corners */
 :root {
   --radius: 0.125rem;
   --background: #0f2a45;
   --glow: #1f4e7a;
   --paper: #16395c; /* hex, like --line: bg.js hands them to three.js for the drawing's faces and lines */
   --line: #cfe4f5;
-  --grid: rgb(190 220 245 / 7%);
   --foreground: #eef5fb;
   --primary: #dcebf7;
   --primary-foreground: #0f2a45;
@@ -18,15 +17,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--foreground); -webkit-font-smoothing: antialiased; }
-/* Drafting grid: fine lines every 24px, a heavier one every 120px; fixed so it stays put if the page scrolls */
+/* A soft glow behind the drawing; the only grid is the one on the factory floor */
 body {
-  background: var(--background);
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-    radial-gradient(ellipse 70% 65% at 50% 58%, var(--glow), transparent);
-  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px, 100% 100%;
-  background-attachment: fixed;
+  background: radial-gradient(ellipse 70% 65% at 50% 58%, var(--glow), transparent) var(--background) fixed;
 }
 body { display: flex; flex-direction: column; min-height: 100%; }
 
