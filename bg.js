@@ -1,4 +1,4 @@
-// Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
+// Background — a line drawing of a small factory: the hall, a conveyor, three robot arms and a work cell on one floor.
 // It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
 // and clicking again puts them back together. The view angle never changes.
 // three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
@@ -55,58 +55,88 @@ for (let x = -18; x <= 26; x += 2.2) {
 }
 for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, conveyor);
 
-// Work cell: a fenced square with corner posts, mesh rails and a gate
+// Work cell: a long fenced bay behind the conveyor and parallel to it, with a gate and a workbench
 const cell = new THREE.Group();
-const CX = -12;
-const CZ = -5;
-for (const [dx, dz] of [[-9, -8], [9, -8], [-9, 8], [9, 8]]) box(0.5, 9, 0.5, CX + dx, 0, CZ + dz, cell);
+const CELL_W = 40;
+const CELL_D = 14;
+const CELL_Z = -9;
+const back = CELL_Z - CELL_D / 2;
+const front = CELL_Z + CELL_D / 2;
+for (const x of [-CELL_W / 2, CELL_W / 2]) for (const z of [back, front]) box(0.5, 9, 0.5, x, 0, z, cell);
 for (const y of [0.5, 4.5, 9]) {
-  box(18, 0.2, 0.2, CX, y, CZ - 8, cell);
-  box(0.2, 0.2, 16, CX - 9, y, CZ, cell);
-  box(0.2, 0.2, 16, CX + 9, y, CZ, cell);
-  box(10, 0.2, 0.2, CX - 4, y, CZ + 8, cell);
+  box(CELL_W, 0.2, 0.2, 0, y, back, cell);
+  box(0.2, 0.2, CELL_D, -CELL_W / 2, y, CELL_Z, cell);
+  box(0.2, 0.2, CELL_D, CELL_W / 2, y, CELL_Z, cell);
+  box(CELL_W - 8, 0.2, 0.2, -4, y, front, cell); // the gap at the right end is the gate
 }
-for (let x = -8; x <= 8; x += 2) box(0.05, 9, 0.05, CX + x, 0, CZ - 8, cell);
+for (let x = -CELL_W / 2 + 2; x < CELL_W / 2; x += 2) box(0.05, 9, 0.05, x, 0, back, cell);
+box(14, 0.6, 5, -4, 3.4, CELL_Z, cell);
+for (const x of [-10, 2]) for (const z of [CELL_Z - 2, CELL_Z + 2]) box(0.5, 3.4, 0.5, x, 0, z, cell);
 
-// Robot arm in the cell — base, turret, upper arm, forearm, wrist, gripper; joints are pivots so it can move
-const robot = new THREE.Group();
-robot.position.set(CX + 1, 0, CZ);
-drum(2.6, 1.2, 0, 0, 0, robot, 20);
-const turret = new THREE.Group();
-turret.position.y = 1.2;
-robot.add(turret);
-drum(1.7, 2.4, 0, 0, 0, turret, 16);
-const shoulder = new THREE.Group();
-shoulder.position.y = 3;
-turret.add(shoulder);
-// A joint pin lying across the arm
-const pin = (r, parent) => {
-  const axle = new THREE.Group();
-  axle.rotation.x = Math.PI / 2;
-  drum(r, 2.4, 0, -1.2, 0, axle, 12);
-  parent.add(axle);
+// Robot arms in front of the fence, reaching over to the conveyor. Same build, three sizes, each with a tool for its job;
+// joints are pivots so they can move.
+function arm({ x, z, size, stand, tool }) {
+  const base = new THREE.Group();
+  base.position.set(x, stand, z);
+  base.scale.setScalar(size);
+  if (stand) box(4, stand / size, 4, 0, -stand / size, 0, base);
+  drum(2.6, 1.2, 0, 0, 0, base, 20);
+  const turret = new THREE.Group();
+  turret.position.y = 1.2;
+  base.add(turret);
+  drum(1.7, 2.4, 0, 0, 0, turret, 16);
+  const shoulder = new THREE.Group();
+  shoulder.position.y = 3;
+  turret.add(shoulder);
+  // A joint pin lying across the arm
+  const pin = (r, parent) => {
+    const axle = new THREE.Group();
+    axle.rotation.x = Math.PI / 2;
+    drum(r, 2.4, 0, -1.2, 0, axle, 12);
+    parent.add(axle);
+  };
+  pin(1.1, shoulder);
+  box(1.4, 9, 1.4, 0, 0, 0, shoulder);
+  const elbow = new THREE.Group();
+  elbow.position.y = 9;
+  shoulder.add(elbow);
+  pin(0.9, elbow);
+  box(1.1, 7.5, 1.1, 0, 0, 0, elbow);
+  const wrist = new THREE.Group();
+  wrist.position.y = 7.5;
+  elbow.add(wrist);
+  drum(0.6, 1.4, 0, 0, 0, wrist, 12);
+  tool(wrist);
+  robots.add(base);
+  return { turret, shoulder, elbow, wrist };
+}
+// Palletising: a wide suction plate. Assembly: a two-finger gripper. Welding: a long, thin torch.
+const suction = (w) => {
+  box(1, 1, 1, 0, 1.4, 0, w);
+  box(4.4, 0.5, 3, 0, 2.4, 0, w);
 };
-pin(1.1, shoulder);
-box(1.4, 9, 1.4, 0, 0, 0, shoulder);
-const elbow = new THREE.Group();
-elbow.position.y = 9;
-shoulder.add(elbow);
-pin(0.9, elbow);
-box(1.1, 7.5, 1.1, 0, 0, 0, elbow);
-const wrist = new THREE.Group();
-wrist.position.y = 7.5;
-elbow.add(wrist);
-drum(0.6, 1.4, 0, 0, 0, wrist, 12);
-box(2.4, 0.5, 0.8, 0, 1.4, 0, wrist);
-box(0.4, 1.6, 0.8, -1, 1.9, 0, wrist);
-box(0.4, 1.6, 0.8, 1, 1.9, 0, wrist);
+const gripper = (w) => {
+  box(2.4, 0.5, 0.8, 0, 1.4, 0, w);
+  box(0.4, 1.6, 0.8, -1, 1.9, 0, w);
+  box(0.4, 1.6, 0.8, 1, 1.9, 0, w);
+};
+const torch = (w) => {
+  drum(0.35, 2.8, 0, 1.4, 0, w, 8);
+  drum(0.14, 1.4, 0, 4.2, 0, w, 6);
+};
+const robots = new THREE.Group();
+const arms = [
+  arm({ x: -17, z: 3, size: 1.25, stand: 0, tool: suction }),
+  arm({ x: -2, z: 4.5, size: 0.9, stand: 1, tool: torch }),
+  arm({ x: 11, z: 6.5, size: 0.6, stand: 2.5, tool: gripper }),
+];
 
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
   { group: conveyor, lift: 7, part: 'conveyor', anchor: new THREE.Vector3(27, 5, 12) },
-  { group: robot, lift: 13, part: 'robot', anchor: new THREE.Vector3(3, 18, -5) },
-  { group: cell, lift: 20, part: 'cell', anchor: new THREE.Vector3(-3, 9, -13) },
+  { group: robots, lift: 13, part: 'robot', anchor: new THREE.Vector3(-13, 17, 3) },
+  { group: cell, lift: 20, part: 'cell', anchor: new THREE.Vector3(20, 9, -16) },
   { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
 for (const layer of layers) {
@@ -189,11 +219,13 @@ function draw() {
   const { apart, named, drawing, peek } = state;
   const lifted = apart + peek;
   for (const layer of layers) layer.group.position.y = layer.base + layer.lift * lifted;
-  // Closed, the arm bends over its work with the gripper pointing down; open, it straightens up a little
-  turret.rotation.y = 2.7 - apart * 0.8;
-  shoulder.rotation.z = 0.3 - apart * 0.15;
-  elbow.rotation.z = 2.1 - apart * 0.8;
-  wrist.rotation.z = 0.74 - apart * 0.1;
+  // Closed, each arm bends over the conveyor with its tool pointing down; open, it straightens up a little
+  for (const { turret, shoulder, elbow, wrist } of arms) {
+    turret.rotation.y = 2.47 - apart * 0.6;
+    shoulder.rotation.z = 0.3 - apart * 0.15;
+    elbow.rotation.z = 2.1 - apart * 0.8;
+    wrist.rotation.z = 0.74 - apart * 0.1;
+  }
   ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
   aim(lifted);
   renderer.render(scene, camera);
