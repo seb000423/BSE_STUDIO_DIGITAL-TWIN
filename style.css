@@ -72,6 +72,6 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 
 /* Name labels follow the parts of the drawing (positions set by bg.js) */
 .labels { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
-.label { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--foreground); opacity: 0; white-space: nowrap; will-change: transform, opacity; }
+.label { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--foreground); opacity: 0; white-space: nowrap; text-shadow: 0 0 6px var(--background), 0 0 2px var(--background); will-change: transform, opacity; }
 .label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--line); flex: none; }
 .label i { display: block; height: 1px; background: var(--line); opacity: 0.6; flex: none; }

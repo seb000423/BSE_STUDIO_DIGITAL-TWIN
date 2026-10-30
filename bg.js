@@ -1,4 +1,5 @@
-// Background — a line drawing of a small factory: the hall, three robot arms and a work cell (a fenced conveyor) on one floor.
+// Background — a line drawing of a small factory on one wide floor: the hall on the left; three robot arms and a work
+// cell (a fenced conveyor) on the right.
 // It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
 // and clicking again puts them back together. The view angle never changes.
 // three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
@@ -26,37 +27,39 @@ const drum = (r, h, x, y, z, parent, segments = 16) => outline(new THREE.Cylinde
 const model = new THREE.Group();
 
 // Floor slab with a layout grid marked on it: a fine line every 2 units, a heavier one every 10
-const FLOOR_W = 64;
-const FLOOR_D = 72;
+const FLOOR_W = 130;
+const FLOOR_D = 48;
 const floor = new THREE.Group();
 box(FLOOR_W, 1, FLOOR_D, 0, -1, 0, floor);
 const marks = (step, material) => {
   const points = [];
-  for (let x = -30; x <= 30; x += step) points.push(x, 0.02, -FLOOR_D / 2, x, 0.02, FLOOR_D / 2);
-  for (let z = -30; z <= 30; z += step) points.push(-FLOOR_W / 2, 0.02, z, FLOOR_W / 2, 0.02, z);
+  for (let x = -60; x <= 60; x += step) points.push(x, 0.02, -FLOOR_D / 2, x, 0.02, FLOOR_D / 2);
+  for (let z = -20; z <= 20; z += step) points.push(-FLOOR_W / 2, 0.02, z, FLOOR_W / 2, 0.02, z);
   floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(points, 3)), material));
 };
 marks(2, fineInk);
 marks(10, ink);
 
-// The hall over the whole floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only, so it hides nothing
+// The hall on the left half of the floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only
+const HALL_W = 64;
 const hall = new THREE.Group();
-for (let x = -31; x <= 31; x += 62 / 4) for (const z of [-35.5, 35.5]) box(0.8, 16, 0.8, x, 0, z, hall);
-for (const z of [-35.5, 35.5]) box(FLOOR_W, 0.6, 0.6, 0, 15.4, z, hall);
+hall.position.x = -33;
+for (let x = -31; x <= 31; x += 62 / 4) for (const z of [-FLOOR_D / 2 + 0.5, FLOOR_D / 2 - 0.5]) box(0.8, 16, 0.8, x, 0, z, hall);
+for (const z of [-FLOOR_D / 2 + 0.5, FLOOR_D / 2 - 0.5]) box(HALL_W, 0.6, 0.6, 0, 15.4, z, hall);
 for (const x of [-31.7, 31.7]) box(0.6, 0.6, FLOOR_D, x, 15.4, 0, hall);
 const tooth = new THREE.Shape();
-tooth.moveTo(-FLOOR_W / 2, 0);
+tooth.moveTo(-HALL_W / 2, 0);
 for (let i = 0; i < 4; i++) {
-  tooth.lineTo(-FLOOR_W / 2 + i * 16 + 13, 6);
-  tooth.lineTo(-FLOOR_W / 2 + i * 16 + 16, 0);
+  tooth.lineTo(-HALL_W / 2 + i * 16 + 13, 6);
+  tooth.lineTo(-HALL_W / 2 + i * 16 + 16, 0);
 }
-tooth.lineTo(-FLOOR_W / 2, 0);
+tooth.lineTo(-HALL_W / 2, 0);
 const roof = outline(new THREE.ExtrudeGeometry(tooth, { depth: FLOOR_D, bevelEnabled: false }), 0, 16, -FLOOR_D / 2, hall);
 roof.clear();
 
 // Work cell: a conveyor (frame, legs, rollers, a few parcels) running between two fences
 const cell = new THREE.Group();
-cell.position.x = -4;
+cell.position.set(29, 0, 3);
 box(46, 0.8, 4, 4, 4, 12, cell);
 for (let x = -16; x <= 24; x += 8) for (const z of [10.4, 13.6]) box(0.5, 4, 0.5, x, 0, z, cell);
 for (let x = -18; x <= 26; x += 2.2) {
@@ -127,17 +130,17 @@ const torch = (w) => {
 };
 const robots = new THREE.Group();
 const arms = [
-  arm({ x: -20, z: -12, size: 1.25, stand: 0, tool: suction }),
-  arm({ x: -3, z: -12, size: 0.9, stand: 3, tool: torch }),
-  arm({ x: 14, z: -12, size: 0.6, stand: 2.5, tool: gripper }),
+  arm({ x: 11, z: -14, size: 1.25, stand: 0, tool: suction }),
+  arm({ x: 29, z: -14, size: 0.9, stand: 3, tool: torch }),
+  arm({ x: 46, z: -14, size: 0.6, stand: 2.5, tool: gripper }),
 ];
 
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(26, 6, 7.5) },
-  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(-16, 17, -12) },
-  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -36) },
+  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(59, 6, 10.5) },
+  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(53, 11, -14) },
+  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(0, 22, -24) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -166,20 +169,14 @@ function paint() {
   paper.color.set(css.getPropertyValue('--paper').trim());
 }
 
-// 3. Labels — one per part, a dot on the part and a leader line out to a column on the right
+// 3. Labels — one per part, in English only: a dot on the part, a short leader line, the name
 const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
   const text = document.createElement('b');
   const lead = document.createElement('i');
   el.append(lead, text);
+  text.textContent = el.dataset.name;
   return { el, text, lead, layer: layers.find((l) => l.part === el.dataset.part) };
 });
-function relabel() {
-  const lang = document.documentElement.lang === 'en' ? 'en' : 'ko';
-  for (const label of labels) label.text.textContent = label.el.dataset[lang];
-}
-new MutationObserver(relabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-relabel();
-
 // 4. One state, moved by the animations at the end of this file
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
@@ -188,7 +185,7 @@ const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0, peek: 0 }; /
 
 // The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
 // picture is shifted so its middle stays in the middle of the room between the title and the buttons.
-const YAW = -0.3;
+const YAW = -0.22;
 const PITCH = 0.55;
 let W = 1;
 let H = 1;
@@ -205,18 +202,18 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 76, W / 100);
-  const open = Math.min(roomH / 104, W / 124);
+  const closed = Math.min(roomH / 62, W / 150);
+  const open = Math.min(roomH / 92, W / 165);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 15;
   camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
   camera.lookAt(0, y, 0);
-  // on phones the open drawing sits a little left, leaving room for the labels on the right
-  camera.setViewOffset(W, H, camera.aspect < 1 ? W * 0.07 * apart : 0, H / 2 - (roomMid - scrollY), W, H);
+  camera.setViewOffset(W, H, 0, H / 2 - (roomMid - scrollY), W, H);
   camera.updateMatrixWorld();
 }
 
+const LEAD = 26;
 const p3 = new THREE.Vector3();
 function draw() {
   const { apart, named, drawing, peek } = state;
@@ -235,8 +232,7 @@ function draw() {
   aim(lifted);
   renderer.render(scene, camera);
 
-  // Labels: anchor projected to the screen, text in a column to the right of the drawing
-  const column = W - (camera.aspect < 1 ? 8 : 24);
+  // Labels sit right beside their part, on a short leader line
   for (const label of labels) {
     p3.copy(label.layer.anchor);
     p3.y += label.layer.lift * lifted;
@@ -250,9 +246,9 @@ function draw() {
     return label.y;
   }, -Infinity);
   labels.forEach((label, i) => {
-    const { x, y } = label;
-    const reach = Math.max(12, column - label.text.offsetWidth - 13 - x);
-    label.lead.style.width = `${reach}px`;
+    const y = label.y;
+    const x = Math.min(label.x, W - 8 - LEAD - 13 - label.text.offsetWidth); // never past the screen edge
+    label.lead.style.width = `${LEAD}px`;
     label.el.style.transform = `translate(${x - 2.5}px, ${y - 9}px)`;
     label.el.style.opacity = String(span(named, i * 0.12, i * 0.12 + 0.5));
   });
