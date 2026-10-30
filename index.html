@@ -41,19 +41,15 @@
     <main class="welcome">
       <div class="head">
         <span class="title">BSE : Digital Twin</span>
-        <h1 data-text-ko="빌드 · 시뮬레이션 · 실행" data-text-en="Build · Simulate · Execute">빌드 · 시뮬레이션 · 실행</h1>
+        <h1>Build · Simulate · Execute</h1>
       </div>
       <!-- The space the factory drawing is centred on; clicking anywhere in it opens or closes the drawing (bg.js) -->
-      <button class="room" type="button" aria-expanded="false">
-        <span class="cue">
-          <i></i>
-          <span class="when-closed" data-text-ko="눌러서 펼치기" data-text-en="Click to open">눌러서 펼치기</span>
-          <span class="when-open" data-text-ko="눌러서 접기" data-text-en="Click to close">눌러서 접기</span>
-        </span>
+      <button class="room" type="button" aria-expanded="false" data-label-ko="공장 그림 펼치기 또는 접기" data-label-en="Open or close the factory drawing" aria-label="공장 그림 펼치기 또는 접기">
+        <span class="cue"><i></i>Click</span>
       </button>
       <div class="row-buttons">
-        <button class="button" data-ko="빌드 화면은 준비 중입니다." data-en="The build view is coming soon." data-text-ko="빌드" data-text-en="Build">빌드</button>
-        <button class="button" data-ko="모니터링 화면은 준비 중입니다." data-en="The monitoring view is coming soon." data-text-ko="모니터링" data-text-en="Monitor">모니터링</button>
+        <button class="button" data-ko="빌드 화면은 준비 중입니다." data-en="The build view is coming soon.">Build</button>
+        <button class="button" data-ko="모니터링 화면은 준비 중입니다." data-en="The monitoring view is coming soon.">Monitor</button>
       </div>
       <p class="hint" id="hint" hidden></p>
     </main>

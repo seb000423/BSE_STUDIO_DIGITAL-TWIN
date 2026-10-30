@@ -78,7 +78,6 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 .cue i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); animation: cue-pulse 1.8s ease-out infinite; }
 .room:hover .cue { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
 .room:hover .cue i { background: var(--primary-foreground); }
-.room[aria-expanded='true'] .when-closed, .room[aria-expanded='false'] .when-open { display: none; }
 @keyframes cue-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--line) 45%, transparent); }
   100% { box-shadow: 0 0 0 9px transparent; }

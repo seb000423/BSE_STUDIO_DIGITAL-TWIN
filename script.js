@@ -20,11 +20,8 @@ function applyLang(lang) {
   });
   const brand = document.querySelector('.brand');
   brand.title = brand.dataset[lang === 'ko' ? 'titleKo' : 'titleEn'];
-  // Everything on the page that has two wordings
+  // Names read out by screen readers
   const key = lang === 'ko' ? 'Ko' : 'En';
-  document.querySelectorAll('[data-text-ko]').forEach((el) => {
-    el.textContent = el.dataset[`text${key}`];
-  });
   document.querySelectorAll('[data-label-ko]').forEach((el) => {
     el.setAttribute('aria-label', el.dataset[`label${key}`]);
   });
