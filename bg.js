@@ -1,6 +1,6 @@
 // Background — modules spread over a blueprint floor assemble, like a crane would place them, into a factory site:
-// a sawtooth-roof hall with glazing and dock doors, an office annex, silos, stacks and a gantry crane.
-// The cubes in front of the hall settle into the BSE logo, which then turns into a solid metal emblem.
+// a sawtooth-roof hall with glazing and dock doors, an office annex, silos and stacks.
+// The cubes above the hall's front settle into the BSE logo, a rooftop sign that then turns into a solid metal emblem.
 // A scan sweeps the finished twin, then everything spreads out again.
 // three.js draws the scene, anime.js times it. Both load from a CDN (import map in index.html); no build step.
 import * as THREE from 'three';
@@ -77,18 +77,18 @@ for (const [cx, cz, h] of [[-18, -40, 30], [-8, -40, 26]]) {
   }
 }
 
-// Gantry crane over the yard on the right, and a pipe run from the silos into the hall
-for (let j = 0; j < 14; j++) for (const x of [40, 58]) add(x, FLOOR + (j + 0.5) * S, 2, S, 'steel');
-for (let x = 40; x <= 58; x += S) add(x, FLOOR + 14.5 * S, 2, S, 'steel');
-for (let j = 0; j < 4; j++) add(49, FLOOR + (13.5 - j) * S, 2, 1, 'steel');
+// A pipe run from the silos into the hall
 for (let x = 36.5; x <= 46; x += 1) add(x, FLOOR + 20, -22, 1, 'steel');
 
-// The logo, traced from the header SVG (42×38) onto a grid — cubes settle here, then hand over to the emblem
+// The logo, traced from the header SVG (42×38) onto a grid — cubes settle here, then hand over to the emblem.
+// It stands on two short posts on the hall's roof, over the front wall.
 const L = 0.65;
 const LW = 42;
 const LH = 38;
 const VERTS = [['B', 21, 8], ['S', 8, 30], ['E', 34, 30]];
-const logoAt = (x, y) => new THREE.Vector2((x - LW / 2) * L, FLOOR + (LH - y) * L + 1);
+const ROOF_TOP = FLOOR + bay(9) * C;
+const LOGO_BASE = ROOF_TOP + 3;
+const logoAt = (x, y) => new THREE.Vector2((x - LW / 2) * L, LOGO_BASE + (LH - 1 - y) * L);
 const trace = document.createElement('canvas');
 trace.width = LW;
 trace.height = LH;
@@ -106,7 +106,10 @@ for (const [, x, y] of VERTS) {
   g.fill();
 }
 const pixels = g.getImageData(0, 0, LW, LH).data;
-const LOGO_Z = -1;
+const LOGO_Z = -6;
+for (const [, x] of VERTS.slice(1)) {
+  for (let y = ROOF_TOP + 0.5; y < LOGO_BASE + 1; y += 1) add((x - LW / 2) * L, y, LOGO_Z, 1, 'steel');
+}
 for (let y = 0; y < LH; y++) {
   for (let x = 0; x < LW; x++) {
     if (pixels[(y * LW + x) * 4 + 3] < 128) continue;
@@ -276,11 +279,11 @@ function fit() {
   const h = innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  // Looking down at the floor a little, aimed above the site so it lands under the title and buttons;
+  // Looking down at the floor a little, aimed above the site so it fills the lower half, under the title and buttons;
   // far enough back that the whole site fits across wide screens
-  const back = camera.aspect < 1 ? 210 : Math.max(135, 72 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect));
-  camera.position.set(0, 34, back);
-  camera.lookAt(0, camera.aspect < 1 ? 27 : 19, -10);
+  const back = camera.aspect < 1 ? 230 : Math.max(140, 72 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect));
+  camera.position.set(0, 40, back);
+  camera.lookAt(0, camera.aspect < 1 ? 34 : 26, -10);
   camera.updateProjectionMatrix();
 }
 
