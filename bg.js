@@ -37,9 +37,9 @@ const wires = (points, parent) => {
 // Floor slab with an even layout grid: a fine line every 2 units, a heavier one every 10. Both sizes are multiples of 10,
 // so every cell is whole right up to the edge, and the floor runs well past the hall on all sides.
 const FLOOR_W = 80;
-const FLOOR_D = 60;
+const FLOOR_D = 70;
 const HALL_W = 64;
-const HALL_D = 40;
+const HALL_D = 52; // deep enough to keep both fences under the roof
 const floor = new THREE.Group();
 box(FLOOR_W, 1, FLOOR_D, 0, -1, 0, floor);
 const marks = (step, material) => {
@@ -53,8 +53,8 @@ marks(10, ink);
 
 // The hall on the floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only, so it hides nothing
 const hall = new THREE.Group();
-for (let x = -30; x <= 30; x += 10) for (const z of [-19.5, 19.5]) box(0.8, 16, 0.8, x, 0, z, hall);
-for (const z of [-19.5, 19.5]) box(HALL_W, 0.6, 0.6, 0, 15.4, z, hall);
+for (let x = -30; x <= 30; x += 10) for (const z of [-HALL_D / 2 + 0.5, HALL_D / 2 - 0.5]) box(0.8, 16, 0.8, x, 0, z, hall);
+for (const z of [-HALL_D / 2 + 0.5, HALL_D / 2 - 0.5]) box(HALL_W, 0.6, 0.6, 0, 15.4, z, hall);
 for (const x of [-31.7, 31.7]) box(0.6, 0.6, HALL_D, x, 15.4, 0, hall);
 const tooth = new THREE.Shape();
 tooth.moveTo(-HALL_W / 2, 0);
@@ -153,7 +153,7 @@ const layers = [
   { group: floor, lift: 0 },
   { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 11, 2) },
   { group: robots, lift: 10, part: 'robot', anchor: new THREE.Vector3(21, 10, -14) },
-  { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
+  { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(32, 22, -26) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -216,8 +216,8 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 68, W / 112);
-  const open = Math.min(roomH / 106, W / 132);
+  const closed = Math.min(roomH / 74, W / 112);
+  const open = Math.min(roomH / 112, W / 132);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 18;
