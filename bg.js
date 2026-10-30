@@ -25,36 +25,38 @@ const drum = (r, h, x, y, z, parent, segments = 16) => outline(new THREE.Cylinde
 
 const model = new THREE.Group();
 
-// Floor slab with a layout grid marked on it: a fine line every 2 units, a heavier one on the hall's column grid
-const FLOOR_W = 130;
+// Floor slab with a layout grid marked on it: a fine line every 2 units, a heavier one every 10
+const FLOOR_W = 96;
+const FLOOR_D = 48;
 const floor = new THREE.Group();
-box(FLOOR_W, 1, 40, 0, -1, 0, floor);
+box(FLOOR_W, 1, FLOOR_D, 0, -1, 0, floor);
 const marks = (step, material) => {
   const points = [];
-  for (let x = -60; x <= 60; x += step) points.push(x, 0.02, -20, x, 0.02, 20);
+  for (let x = -40; x <= 40; x += step) points.push(x, 0.02, -FLOOR_D / 2, x, 0.02, FLOOR_D / 2);
   for (let z = -20; z <= 20; z += step) points.push(-FLOOR_W / 2, 0.02, z, FLOOR_W / 2, 0.02, z);
   floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(points, 3)), material));
 };
 marks(2, fineInk);
 marks(10, ink);
 
-// The hall: columns and a sawtooth roof over the left half of the floor; the right half is open, so nothing there is hidden
+// The hall over the whole floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only, so it hides nothing
 const hall = new THREE.Group();
-hall.position.x = -33;
-for (let x = -30; x <= 30; x += 10) for (const z of [-19.5, 19.5]) box(0.8, 16, 0.8, x, 0, z, hall);
+for (let x = -47; x <= 47; x += 94 / 4) for (const z of [-23.5, 23.5]) box(0.8, 16, 0.8, x, 0, z, hall);
+for (const z of [-23.5, 23.5]) box(FLOOR_W, 0.6, 0.6, 0, 15.4, z, hall);
+for (const x of [-47.7, 47.7]) box(0.6, 0.6, FLOOR_D, x, 15.4, 0, hall);
 const tooth = new THREE.Shape();
-tooth.moveTo(-32, 0);
+tooth.moveTo(-FLOOR_W / 2, 0);
 for (let i = 0; i < 4; i++) {
-  tooth.lineTo(-32 + i * 16 + 13, 6);
-  tooth.lineTo(-32 + i * 16 + 16, 0);
+  tooth.lineTo(-FLOOR_W / 2 + i * 24 + 20, 6);
+  tooth.lineTo(-FLOOR_W / 2 + i * 24 + 24, 0);
 }
-tooth.lineTo(-32, 0);
-outline(new THREE.ExtrudeGeometry(tooth, { depth: 40, bevelEnabled: false }), 0, 16, -20, hall);
-box(64, 0.6, 40, 0, 15.4, 0, hall);
+tooth.lineTo(-FLOOR_W / 2, 0);
+const roof = outline(new THREE.ExtrudeGeometry(tooth, { depth: FLOOR_D, bevelEnabled: false }), 0, 16, -FLOOR_D / 2, hall);
+roof.clear();
 
 // Work cell: a conveyor (frame, legs, rollers, a few parcels) running between two fences
 const cell = new THREE.Group();
-cell.position.x = 29;
+cell.position.set(-4, 0, 3);
 box(46, 0.8, 4, 4, 4, 12, cell);
 for (let x = -16; x <= 24; x += 8) for (const z of [10.4, 13.6]) box(0.5, 4, 0.5, x, 0, z, cell);
 for (let x = -18; x <= 26; x += 2.2) {
@@ -72,7 +74,7 @@ for (const z of [7.5, 16.5]) {
   for (let x = -18; x < 30; x += 4) box(0.05, FENCE_H, 0.05, x, 0, z, cell);
 }
 
-// Robot arms outside the back fence, reaching over it to the conveyor. Same build, three sizes, each with a tool for its job;
+// Robot arms well behind the back fence, facing the conveyor, so they stand clear of it. Same build, three sizes, each with a tool for its job;
 // joints are pivots so they can move.
 function arm({ x, z, size, stand, tool }) {
   const base = new THREE.Group();
@@ -125,17 +127,17 @@ const torch = (w) => {
 };
 const robots = new THREE.Group();
 const arms = [
-  arm({ x: 12, z: 2, size: 1.25, stand: 0, tool: suction }),
-  arm({ x: 30, z: 4, size: 0.9, stand: 3, tool: torch }),
-  arm({ x: 47, z: 5.5, size: 0.6, stand: 2.5, tool: gripper }),
+  arm({ x: -26, z: -9, size: 1.25, stand: 0, tool: suction }),
+  arm({ x: -3, z: -9, size: 0.9, stand: 3, tool: torch }),
+  arm({ x: 18, z: -9, size: 0.6, stand: 2.5, tool: gripper }),
 ];
 
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(59, 6, 7.5) },
-  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(16, 17, 2) },
-  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(-1, 22, -20) },
+  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(26, 6, 10.5) },
+  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(-22, 17, -9) },
+  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(48, 22, -24) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -186,7 +188,7 @@ const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0, peek: 0 }; /
 
 // The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
 // picture is shifted so its middle stays in the middle of the room between the title and the buttons.
-const YAW = -0.22;
+const YAW = -0.3;
 const PITCH = 0.55;
 let W = 1;
 let H = 1;
@@ -203,8 +205,8 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 62, W / 150);
-  const open = Math.min(roomH / 92, W / 165);
+  const closed = Math.min(roomH / 62, W / 118);
+  const open = Math.min(roomH / 92, W / 135);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 15;
@@ -220,7 +222,7 @@ function draw() {
   const { apart, named, drawing, peek } = state;
   const lifted = apart + peek;
   for (const layer of layers) layer.group.position.y = layer.base + layer.lift * lifted;
-  // Closed, each arm bends over the conveyor with its tool pointing down; open, it straightens up a little
+  // Closed, each arm bends forward with its tool pointing down; open, it straightens up a little
   for (const { turret, shoulder, elbow, wrist } of arms) {
     turret.rotation.y = 2 - apart * 0.5;
     shoulder.rotation.z = 0.3 - apart * 0.15;
