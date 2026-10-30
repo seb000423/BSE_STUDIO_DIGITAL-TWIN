@@ -42,18 +42,14 @@
       <p class="hint" id="hint" hidden></p>
     </main>
 
-    <!-- Scrolling through this stretch takes the line model apart layer by layer (bg.js); scrolling back puts it together -->
-    <section class="stage" aria-hidden="true">
-      <div class="labels">
-        <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
-        <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
-        <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
-        <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
-      </div>
-    </section>
-
-    <!-- The BSE logo as a halftone of dots, filled in from the centre as it scrolls into view (bg.js) -->
-    <section class="mark" aria-hidden="true"><svg class="dots"></svg></section>
+    <!-- Name labels for the line drawing, and the BSE logo as dots (both driven by bg.js) -->
+    <div class="labels" aria-hidden="true">
+      <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
+      <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
+      <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
+      <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
+    </div>
+    <div class="mark" aria-hidden="true"><svg class="dots"></svg></div>
 
     <script src="script.js"></script>
     <script type="importmap">

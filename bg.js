@@ -1,16 +1,14 @@
 // Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
-// Scrolling through the stage lifts the parts off one another into a stacked, exploded drawing, turning the view from
-// the front to above and swinging the robot arm, with a name label tied to each part. Scrolling back puts it together.
-// Further down, the BSE logo appears as a halftone of dots, filled in from the centre as it scrolls into view.
-// three.js draws the model, anime.js runs the intro; the dots are plain SVG. Both load from a CDN; no build step.
+// On a loop, on one screen: the parts lift off one another into a stacked drawing with a name label on each, come back
+// together, then the drawing gives way to the BSE logo as a halftone of dots, and back again. The camera never moves.
+// three.js draws the model, anime.js times the loop. Both load from a CDN; no build step.
 import * as THREE from 'three';
-import { animate } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
+import { createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
 
 const canvas = document.getElementById('bg');
-const stage = document.querySelector('.stage');
+const buttons = document.querySelector('.row-buttons');
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 const dark = matchMedia('(prefers-color-scheme: dark)');
-const small = Math.min(innerWidth, innerHeight) < 640;
 
 // 1. Drawing kit — every part is outlines only
 const ink = new THREE.LineBasicMaterial({ transparent: true });
@@ -135,7 +133,7 @@ function paint() {
 }
 
 // 3. Labels — one per part, a dot on the part and a leader line out to a column on the right
-const labels = [...document.querySelectorAll('.stage .label')].map((el) => {
+const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
   const text = document.createElement('b');
   const lead = document.createElement('i');
   el.append(lead, text);
@@ -148,50 +146,52 @@ function relabel() {
 new MutationObserver(relabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 relabel();
 
-// 4. Scroll → one progress value: 0 at the top of the page, 1 at the end of the stage
+// 4. One state for the whole loop, moved by the timeline at the end of this file
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
 const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
-function progress() {
-  if (still.matches) return 0.6;
-  const end = stage.offsetTop + stage.offsetHeight - innerHeight;
-  return clamp(scrollY / end);
+const state = still.matches
+  ? { apart: 1, named: 1, drawing: 1, logo: 0 } // no motion: the drawing stands apart with its labels
+  : { apart: 0, named: 0, drawing: 0, logo: 0 };
+
+// The camera is fixed; it only gets fitted to the space under the title and buttons
+const YAW = -0.42;
+const PITCH = 0.55;
+const CENTRE = new THREE.Vector3(0, 38, 0);
+function fit() {
+  const w = innerWidth;
+  const h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  const top = buttons.getBoundingClientRect().bottom + 12;
+  const room = h - top;
+  document.documentElement.style.setProperty('--stage-top', `${top}px`);
+  // far enough back for the full height of the stacked drawing, and for its width on narrow screens
+  const dist = Math.max(300 * (540 / room), 70 / (Math.tan(THREE.MathUtils.degToRad(16)) * camera.aspect));
+  camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, CENTRE.y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
+  camera.lookAt(CENTRE);
+  // shift the picture down so its middle is the middle of that space
+  camera.setViewOffset(w, h, 0, -(top + room / 2 - h / 2), w, h);
+  camera.updateMatrixWorld();
 }
 
-const intro = { k: still.matches ? 1 : 0 }; // the drawing fading and settling in on first load
 const p3 = new THREE.Vector3();
 function draw() {
-  const p = progress();
-  const apart = span(p, 0.12, 0.72); // how far the layers have lifted
-  const look = span(p, 0, 0.3); // view moves from under the title to the middle of the screen
-  const gone = span(p, 0.86, 1); // the drawing fades as the logo section comes up
-
-  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * apart + (1 - intro.k) * layer.lift * 0.15;
+  const { apart, named, drawing } = state;
+  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * apart;
   turret.rotation.y = -0.6 + apart * 1.4;
   shoulder.rotation.z = 0.35 - apart * 0.7;
   elbow.rotation.z = 1.1 + apart * 0.5;
   wrist.rotation.z = 0.4 - apart * 0.6;
-
-  // Camera swings from a low front three-quarter view up to a higher one as it comes apart
-  const narrow = camera.aspect < 1;
-  const yaw = -0.55 + apart * 0.25;
-  const pitch = 0.32 + apart * 0.38;
-  const dist = (narrow ? 310 : 150) + apart * (narrow ? 140 : 90);
-  // on phones the drawing sits a little left, leaving room for the labels on the right
-  const centre = new THREE.Vector3(narrow ? apart * 16 : 0, 6 + apart * 34, 0);
-  camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, centre.y + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
-  // At the top of the page the drawing sits low, under the title and buttons
-  camera.lookAt(centre.x, centre.y + (1 - look) * (narrow ? 44 : 30), centre.z);
-  ink.opacity = (dark.matches ? 0.7 : 0.62) * intro.k * (1 - gone);
+  ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
   renderer.render(scene, camera);
 
   // Labels: anchor projected to the screen, text in a column to the right of the drawing
-  const column = narrow ? innerWidth - 16 : Math.min(innerWidth - 40, innerWidth / 2 + 380);
-  const shown = span(p, 0.3, 0.5) * (1 - gone);
+  const column = camera.aspect < 1 ? innerWidth - 8 : Math.min(innerWidth - 40, innerWidth / 2 + 380);
   for (const label of labels) {
     p3.copy(label.layer.anchor);
     p3.y += label.layer.lift * apart;
-    p3.applyMatrix4(model.matrixWorld).project(camera);
+    p3.project(camera);
     label.x = (p3.x * 0.5 + 0.5) * innerWidth;
     label.y = (-p3.y * 0.5 + 0.5) * innerHeight;
   }
@@ -202,33 +202,23 @@ function draw() {
   }, -Infinity);
   labels.forEach((label, i) => {
     const { x, y } = label;
-    const width = label.text.offsetWidth;
-    const reach = Math.max(12, column - width - 13 - x);
+    const reach = Math.max(12, column - label.text.offsetWidth - 13 - x);
     label.lead.style.width = `${reach}px`;
     label.el.style.transform = `translate(${x - 2.5}px, ${y - 9}px)`;
-    label.el.style.opacity = String(span(shown, i * 0.12, i * 0.12 + 0.5));
+    label.el.style.opacity = String(span(named, i * 0.12, i * 0.12 + 0.5));
   });
-}
-
-function fit() {
-  renderer.setSize(innerWidth, innerHeight, false);
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
+  fillDots();
 }
 
 paint();
-fit();
-draw();
 addEventListener('resize', () => {
   fit();
   draw();
 });
-addEventListener('scroll', () => requestAnimationFrame(draw), { passive: true });
 dark.addEventListener('change', () => {
   paint();
   draw();
 });
-if (!still.matches) animate(intro, { k: 1, duration: 1600, ease: 'outCubic', onUpdate: draw });
 
 // 5. The BSE logo as dots — traced from the header SVG (42×38), letters punched out, filled in from the centre on scroll
 const dots = document.querySelector('.mark .dots');
@@ -279,15 +269,34 @@ for (let y = STEP / 2; y < LH; y += STEP) {
   }
 }
 const circles = [...dots.children];
-// 0 when the logo's top reaches the bottom of the screen, 1 when its centre reaches the middle
+// Filled in from the centre out
 function fillDots() {
-  const box = dots.getBoundingClientRect();
-  const q = still.matches ? 1 : clamp((innerHeight - box.top) / (innerHeight / 2 + box.height / 2));
+  const q = state.logo;
   circles.forEach((dot, i) => {
     const own = smooth(clamp((q - Number(dot.dataset.d) * 0.45) / 0.55));
     dot.setAttribute('r', (sizes[i] * own).toFixed(3));
   });
 }
-fillDots();
-addEventListener('scroll', () => requestAnimationFrame(fillDots), { passive: true });
-addEventListener('resize', fillDots);
+
+// 6. The loop: drawing appears, comes apart, is named, goes back together, gives way to the logo, and round again
+fit();
+draw();
+function start() {
+  if (still.matches) {
+    renderer.setAnimationLoop(null);
+    Object.assign(state, { apart: 1, named: 1, drawing: 1, logo: 0 });
+    draw();
+    return;
+  }
+  createTimeline({ loop: true })
+    .add(state, { drawing: 1, duration: 800, ease: 'outCubic' }, 0)
+    .add(state, { apart: 1, duration: 2200, ease: 'inOutCubic' }, 2000)
+    .add(state, { named: 1, duration: 700, ease: 'outQuad' }, 3700)
+    .add(state, { named: 0, duration: 400, ease: 'inQuad' }, 7000)
+    .add(state, { apart: 0, duration: 2000, ease: 'inOutCubic' }, 7200)
+    .add(state, { drawing: 0, duration: 600, ease: 'inQuad' }, 10000)
+    .add(state, { logo: 1, duration: 1600, ease: 'linear' }, 10300)
+    .add(state, { logo: 0, duration: 900, ease: 'linear' }, 14500);
+  renderer.setAnimationLoop(draw);
+}
+start();
