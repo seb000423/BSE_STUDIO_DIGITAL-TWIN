@@ -186,7 +186,6 @@ function paint() {
 }
 
 // 3. Labels — one per part, in English only: a dot on the part, a leader line, the name
-const cue = document.querySelector('.labels .cue');
 const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
   const text = document.createElement('b');
   const lead = document.createElement('i');
@@ -266,9 +265,6 @@ function draw() {
     label.y = Math.max(label.y, above + 22);
     return label.y;
   }, -Infinity);
-  // "Click" stays on the empty front of the floor grid
-  p3.set(0, 0, FLOOR_D / 2 - 5).project(camera);
-  cue.style.transform = `translate(${(p3.x * 0.5 + 0.5) * W}px, ${(-p3.y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
   labels.forEach((label, i) => {
     const { x, y } = label;
     label.lead.style.width = `${Math.max(12, column - label.text.offsetWidth - 13 - x)}px`;
