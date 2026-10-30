@@ -153,8 +153,8 @@ const arms = [
 const layers = [
   { group: floor, lift: 0 },
   { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(30, 11, 2) },
-  { group: robots, lift: 10, part: 'robot', anchor: new THREE.Vector3(21, 10, -20) },
-  { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(36, 22, -32) },
+  { group: robots, lift: 4, part: 'robot', anchor: new THREE.Vector3(21, 10, -20) },
+  { group: hall, lift: 44, back: 16, part: 'factory', anchor: new THREE.Vector3(36, 22, -32) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -218,10 +218,10 @@ function fit() {
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
   const closed = Math.min(roomH / 84, W / 124);
-  const open = Math.min(roomH / 118, W / 142);
+  const open = Math.min(roomH / 126, W / 142);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
-  const y = 9 + apart * 18;
+  const y = 9 + apart * 21;
   camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
   camera.lookAt(0, y, 0);
   camera.setViewOffset(W, H, 0, H / 2 - (roomMid - scrollY), W, H);
@@ -232,7 +232,10 @@ const p3 = new THREE.Vector3();
 function draw() {
   const { apart, named, drawing, peek } = state;
   const lifted = apart + peek;
-  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * lifted;
+  for (const layer of layers) {
+    layer.group.position.y = layer.base + layer.lift * lifted;
+    layer.group.position.z = -(layer.back ?? 0) * lifted; // the roof also slides back, clear of the robot arms
+  }
   // Closed, each arm bends forward with its tool pointing down; open, it straightens up a little
   for (const { turret, shoulder, elbow, wrist } of arms) {
     turret.rotation.y = 2 - apart * 0.5;
@@ -252,6 +255,7 @@ function draw() {
   for (const label of labels) {
     p3.copy(label.layer.anchor);
     p3.y += label.layer.lift * lifted;
+    p3.z -= (label.layer.back ?? 0) * lifted;
     p3.project(camera);
     label.x = (p3.x * 0.5 + 0.5) * W;
     label.y = (-p3.y * 0.5 + 0.5) * H;
