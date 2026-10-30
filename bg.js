@@ -197,8 +197,7 @@ const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
 const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
-let hovering = false;
-const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0, peek: 0 }; // peek: a small lift inviting the first click
+const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0 };
 
 // The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
 // picture is shifted so its middle stays in the middle of the room between the title and the buttons.
@@ -232,11 +231,10 @@ function aim(apart) {
 
 const p3 = new THREE.Vector3();
 function draw() {
-  const { apart, named, drawing, peek } = state;
-  const lifted = apart + peek;
+  const { apart, named, drawing } = state;
   for (const layer of layers) {
-    layer.group.position.y = layer.base + layer.lift * lifted;
-    layer.group.position.z = -(layer.back ?? 0) * lifted; // the roof also slides back, clear of the robot arms
+    layer.group.position.y = layer.base + layer.lift * apart;
+    layer.group.position.z = -(layer.back ?? 0) * apart; // the roof also slides back, clear of the robot arms
   }
   // Closed, each arm bends forward with its tool pointing down; open, it straightens up a little
   for (const { turret, shoulder, elbow, wrist } of arms) {
@@ -246,18 +244,18 @@ function draw() {
     wrist.rotation.z = 0.74 - apart * 0.1;
   }
   ink.opacity = 0.8 * drawing;
-  fineInk.opacity = (hovering ? 0.42 : 0.2) * drawing;
+  fineInk.opacity = 0.2 * drawing;
   meshInk.opacity = 0.35 * drawing;
   paper.opacity = drawing;
-  aim(lifted);
+  aim(apart);
   renderer.render(scene, camera);
 
   // Labels: a leader line from the part out to a column to the right of the drawing
   const column = camera.aspect < 1 ? W - 8 : W / 2 + Math.min(W / 2 - 24, roomH * 1.05);
   for (const label of labels) {
     p3.copy(label.layer.anchor);
-    p3.y += label.layer.lift * lifted;
-    p3.z -= (label.layer.back ?? 0) * lifted;
+    p3.y += label.layer.lift * apart;
+    p3.z -= (label.layer.back ?? 0) * apart;
     p3.project(camera);
     label.x = (p3.x * 0.5 + 0.5) * W;
     label.y = (-p3.y * 0.5 + 0.5) * H;
@@ -282,13 +280,11 @@ addEventListener('resize', () => {
 });
 addEventListener('scroll', draw, { passive: true }); // only very short windows scroll at all
 
-// 5. On load the drawing comes in, and lifts slightly now and then until the first click. Clicking its floor grid opens or closes it.
+// 5. On load the drawing comes in. Clicking its floor grid opens or closes it.
 fit();
 draw();
-let peeking = null;
 if (!still.matches) {
   animate(state, { drawing: 1, duration: 900, ease: 'outCubic', onUpdate: draw });
-  peeking = animate(state, { peek: 0.07, duration: 700, delay: 1600, loopDelay: 2200, ease: 'inOutSine', loop: true, alternate: true, onUpdate: draw });
 }
 let opened = false;
 function toggle() {
@@ -298,11 +294,6 @@ function toggle() {
     state.apart = state.named = opened ? 1 : 0;
     draw();
     return;
-  }
-  if (peeking) {
-    peeking.pause();
-    peeking = null;
-    animate(state, { peek: 0, duration: 300, ease: 'outQuad', onUpdate: draw });
   }
   if (opened) {
     animate(state, { apart: 1, duration: 1300, ease: 'inOutCubic', onUpdate: draw });
@@ -324,11 +315,7 @@ function overFloor(e) {
 }
 const onControl = (e) => e.target.closest?.('button, a');
 addEventListener('pointermove', (e) => {
-  const over = !onControl(e) && overFloor(e);
-  if (over === hovering) return;
-  hovering = over;
-  document.documentElement.style.cursor = over ? 'pointer' : '';
-  draw(); // the grid brightens under the pointer
+  document.documentElement.style.cursor = !onControl(e) && overFloor(e) ? 'pointer' : '';
 });
 addEventListener('click', (e) => {
   if (!onControl(e) && overFloor(e)) toggle();
