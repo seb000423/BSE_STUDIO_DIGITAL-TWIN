@@ -145,7 +145,7 @@ const arms = [
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(34, 6, 7.5) },
+  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(34, 6, 7.5) },
   { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(21, 10, -9) },
   { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
