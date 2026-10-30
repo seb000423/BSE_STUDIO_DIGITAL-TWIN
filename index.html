@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <canvas id="bg" aria-hidden="true"></canvas>
     <header class="bar">
       <span class="side"></span>
       <a class="brand" href="index.html" data-title-ko="처음 화면으로" data-title-en="Back to start">
@@ -33,23 +32,28 @@
     </header>
 
     <main class="welcome">
-      <span class="title">BSE : Digital Twin</span>
-      <h1>Build · Simulate · Execute</h1>
+      <div class="head">
+        <!-- The BSE logo as dots, always there behind the title (drawn by bg.js) -->
+        <div class="mark" aria-hidden="true"><svg class="dots"></svg></div>
+        <span class="title">BSE : Digital Twin</span>
+        <h1>Build · Simulate · Execute</h1>
+      </div>
+      <!-- The line drawing of the factory and the name labels on its parts (bg.js) -->
+      <div class="room" aria-hidden="true">
+        <canvas id="bg"></canvas>
+        <div class="labels">
+          <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
+          <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
+          <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
+          <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
+        </div>
+      </div>
       <div class="row-buttons">
         <button class="button" data-ko="빌드 화면은 준비 중입니다." data-en="The build view is coming soon.">Build</button>
         <button class="button" data-ko="모니터링 화면은 준비 중입니다." data-en="The monitoring view is coming soon.">Monitor</button>
       </div>
       <p class="hint" id="hint" hidden></p>
     </main>
-
-    <!-- Name labels for the line drawing, and the BSE logo as dots (both driven by bg.js) -->
-    <div class="labels" aria-hidden="true">
-      <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
-      <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
-      <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
-      <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
-    </div>
-    <div class="mark" aria-hidden="true"><svg class="dots"></svg></div>
 
     <script src="script.js"></script>
     <script type="importmap">
