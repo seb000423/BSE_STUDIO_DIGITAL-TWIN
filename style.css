@@ -1,29 +1,18 @@
-/* Tokens after BSE Studio (styles/drive.css), on a warm paper grey with a drafting grid; near-square corners */
+/* Blueprint look: deep navy, pale lines, a drafting grid; one theme for everyone; near-square corners */
 :root {
   --radius: 0.125rem;
-  --background: #d9d7d2; /* hex: bg.js also fills the drawing's solid faces with it */
-  --grid: oklch(0.2 0.01 85 / 7%);
-  --line: #35332f; /* hex: bg.js hands it to three.js */
-  --foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.2 0.01 85 / 14%);
+  --background: #0f2a45;
+  --glow: #1f4e7a;
+  --paper: #16395c; /* hex, like --line: bg.js hands them to three.js for the drawing's faces and lines */
+  --line: #cfe4f5;
+  --grid: rgb(190 220 245 / 7%);
+  --foreground: #eef5fb;
+  --primary: #dcebf7;
+  --primary-foreground: #0f2a45;
+  --muted-foreground: #a3b9cd;
+  --border: rgb(200 225 245 / 22%);
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1b1a18;
-    --grid: oklch(0.95 0.01 85 / 6%);
-    --line: #d8d4cb;
-    --foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --border: oklch(1 0 0 / 10%);
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -34,8 +23,9 @@ body {
   background: var(--background);
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 65% at 50% 58%, var(--glow), transparent);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px, 100% 100%;
   background-attachment: fixed;
 }
 body { display: flex; flex-direction: column; min-height: 100%; }

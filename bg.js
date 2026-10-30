@@ -8,9 +8,8 @@ import { animate } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.es
 const canvas = document.getElementById('bg');
 const room = document.querySelector('.room');
 const still = matchMedia('(prefers-reduced-motion: reduce)');
-const dark = matchMedia('(prefers-color-scheme: dark)');
 
-// 1. Drawing kit — every part is outlines over solid faces in the page colour, so lines behind a part stay hidden
+// 1. Drawing kit — every part is outlines over solid faces, so lines behind a part stay hidden
 const ink = new THREE.LineBasicMaterial({ transparent: true });
 const fineInk = new THREE.LineBasicMaterial({ transparent: true });
 const paper = new THREE.MeshBasicMaterial({ transparent: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
@@ -159,7 +158,7 @@ function paint() {
   const css = getComputedStyle(document.documentElement);
   ink.color.set(css.getPropertyValue('--line').trim());
   fineInk.color.copy(ink.color);
-  paper.color.set(css.getPropertyValue('--background').trim());
+  paper.color.set(css.getPropertyValue('--paper').trim());
 }
 
 // 3. Labels — one per part, a dot on the part and a leader line out to a column on the right
@@ -225,8 +224,8 @@ function draw() {
     elbow.rotation.z = 2.1 - apart * 0.8;
     wrist.rotation.z = 0.74 - apart * 0.1;
   }
-  ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
-  fineInk.opacity = 0.18 * drawing;
+  ink.opacity = 0.8 * drawing;
+  fineInk.opacity = 0.2 * drawing;
   paper.opacity = drawing;
   aim(lifted);
   renderer.render(scene, camera);
@@ -260,10 +259,6 @@ addEventListener('resize', () => {
   draw();
 });
 addEventListener('scroll', draw, { passive: true }); // only very short windows scroll at all
-dark.addEventListener('change', () => {
-  paint();
-  draw();
-});
 
 // 5. On load the drawing comes in, and lifts slightly now and then until the first click. Clicking opens or closes it.
 fit();
