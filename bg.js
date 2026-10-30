@@ -1,7 +1,12 @@
-// Background — modules spread over a blueprint floor assemble, like a crane would place them, into a factory hall
-// with the BSE logo standing at its front; a scan sweeps the finished twin, then the modules spread out again.
-// three.js draws the cubes (one instanced mesh), anime.js times the assembly and the scan. Both load from a CDN; no build step.
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+// Background — modules spread over a blueprint floor assemble, like a crane would place them, into a factory site:
+// a sawtooth-roof hall with glazing and dock doors, an office annex, silos, stacks and a gantry crane.
+// The cubes in front of the hall settle into the BSE logo, which then turns into a solid metal emblem.
+// A scan sweeps the finished twin, then everything spreads out again.
+// three.js draws the scene, anime.js times it. Both load from a CDN (import map in index.html); no build step.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
 
 const canvas = document.getElementById('bg');
@@ -12,34 +17,78 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const FLOOR = -22;
 const SPAN_X = 68;
 
-// 1. The finished shape: a hollow sawtooth-roof hall, a chimney, and the logo in front of the hall
-const targets = []; // { pos, cell, logo }
-const C = 3; // hall module size
-const COLS = 28;
-const DEPTH = 10;
-const roof = (i) => 7 + Math.floor((i % 7) / 2); // sawtooth: rises across each bay, then drops
-const hall = (i, j, k) => i >= 0 && i < COLS && k >= 0 && k < DEPTH && j >= 0 && j < roof(i);
-for (let i = 0; i < COLS; i++) {
-  for (let k = 0; k < DEPTH; k++) {
-    for (let j = 0; j < roof(i); j++) {
-      // Keep only the outer shell
-      const shell = !hall(i - 1, j, k) || !hall(i + 1, j, k) || !hall(i, j + 1, k) || !hall(i, j, k - 1) || !hall(i, j, k + 1);
-      if (!shell) continue;
-      targets.push({ pos: new THREE.Vector3((i - COLS / 2 + 0.5) * C, FLOOR + (j + 0.5) * C, (k - DEPTH + 0.5) * C - 6), cell: C });
+// 1. The finished site. Each target is one cube: where it ends up, its size, and what it is (wall, roof, glass, steel, logo)
+const targets = [];
+const add = (x, y, z, cell, kind) => targets.push({ pos: new THREE.Vector3(x, y, z), cell, kind });
+
+// Hollow shell of a box of cells; `look(i, j, k, top)` names each shell cell, or returns null to leave a hole
+function shell(cols, depth, height, cell, origin, look) {
+  const inside = (i, j, k) => i >= 0 && i < cols && k >= 0 && k < depth && j >= 0 && j < height(i);
+  for (let i = 0; i < cols; i++) {
+    for (let k = 0; k < depth; k++) {
+      for (let j = 0; j < height(i); j++) {
+        const top = !inside(i, j + 1, k);
+        const outer = top || !inside(i - 1, j, k) || !inside(i + 1, j, k) || !inside(i, j, k - 1) || !inside(i, j, k + 1);
+        if (!outer) continue;
+        const kind = look(i, j, k, top, inside);
+        if (kind) add(origin.x + (i + 0.5) * cell, FLOOR + (j + 0.5) * cell, origin.z + (k + 0.5) * cell, cell, kind);
+      }
     }
   }
 }
-for (let j = 0; j < 15; j++) {
-  for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-    targets.push({ pos: new THREE.Vector3(30 + dx * C, FLOOR + (j + 0.5) * C, -30 - dz * C), cell: C });
+
+// Main hall — sawtooth roof whose steep faces are glazed, a window band, two dock doors at the front
+const C = 3;
+const COLS = 24;
+const DEPTH = 10;
+const bay = (i) => 7 + Math.floor((i % 6) / 2);
+shell(COLS, DEPTH, bay, C, { x: -COLS * C / 2, z: -DEPTH * C - 4.5 }, (i, j, k, top, inside) => {
+  const front = k === DEPTH - 1;
+  if (front && j < 3 && ((i >= 2 && i <= 4) || (i >= 19 && i <= 21))) return null;
+  if (top) return 'roof';
+  if (!inside(i + 1, j, k) && i < COLS - 1) return 'glass';
+  if (j === 4 && (front || k === 0 || i === 0 || i === COLS - 1)) return 'glass';
+  return 'wall';
+});
+
+// Office annex on the left — flat roof, a grid of windows
+shell(6, 6, () => 4, C, { x: -COLS * C / 2 - 6 * C - 1, z: -6 * C - 4.5 }, (i, j, k, top) =>
+  top ? 'roof' : j > 0 && i % 2 === 0 ? 'glass' : 'wall',
+);
+
+// Two silos on the right, with cone tops
+const S = 1.5;
+for (const [cx, cz] of [[44, -26], [52, -16]]) {
+  for (let j = 0; j < 20; j++) {
+    const r = j < 17 ? 3.4 : 3.4 - (j - 16) * 0.9;
+    for (let x = -4; x <= 4; x++) {
+      for (let z = -4; z <= 4; z++) {
+        const d = Math.hypot(x * S, z * S);
+        if (Math.abs(d - r) < S * 0.55 || (j === 19 && d < r)) add(cx + x * S, FLOOR + (j + 0.5) * S, cz + z * S, S, j % 6 === 5 ? 'steel' : 'wall');
+      }
+    }
   }
 }
 
-// Trace the logo (same geometry as the header SVG, 42×38) onto a grid; every filled cell becomes a small cube,
-// sized so the logo fits the hall's front wall
+// Two stacks behind the hall, banded
+for (const [cx, cz, h] of [[-18, -40, 30], [-8, -40, 26]]) {
+  for (let j = 0; j < h; j++) {
+    for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) add(cx + dx * S, FLOOR + (j + 0.5) * S, cz + dz * S, S, j % 7 === 6 ? 'glass' : 'steel');
+  }
+}
+
+// Gantry crane over the yard on the right, and a pipe run from the silos into the hall
+for (let j = 0; j < 14; j++) for (const x of [40, 58]) add(x, FLOOR + (j + 0.5) * S, 2, S, 'steel');
+for (let x = 40; x <= 58; x += S) add(x, FLOOR + 14.5 * S, 2, S, 'steel');
+for (let j = 0; j < 4; j++) add(49, FLOOR + (13.5 - j) * S, 2, 1, 'steel');
+for (let x = 36.5; x <= 46; x += 1) add(x, FLOOR + 20, -22, 1, 'steel');
+
+// The logo, traced from the header SVG (42×38) onto a grid — cubes settle here, then hand over to the emblem
 const L = 0.65;
 const LW = 42;
 const LH = 38;
+const VERTS = [['B', 21, 8], ['S', 8, 30], ['E', 34, 30]];
+const logoAt = (x, y) => new THREE.Vector2((x - LW / 2) * L, FLOOR + (LH - y) * L + 1);
 const trace = document.createElement('canvas');
 trace.width = LW;
 trace.height = LH;
@@ -51,29 +100,22 @@ g.lineTo(8, 30);
 g.lineTo(34, 30);
 g.closePath();
 g.stroke();
-const VERTS = [['B', 21, 8], ['S', 8, 30], ['E', 34, 30]];
 for (const [, x, y] of VERTS) {
   g.beginPath();
   g.arc(x, y, 7, 0, Math.PI * 2);
   g.fill();
 }
-// Letters are punched out of the circles, just like the logo
-g.globalCompositeOperation = 'destination-out';
-g.font = '800 9px Arial, Helvetica, sans-serif';
-g.textAlign = 'center';
-g.textBaseline = 'middle';
-for (const [letter, x, y] of VERTS) g.fillText(letter, x, y + 0.4);
 const pixels = g.getImageData(0, 0, LW, LH).data;
+const LOGO_Z = -1;
 for (let y = 0; y < LH; y++) {
   for (let x = 0; x < LW; x++) {
     if (pixels[(y * LW + x) * 4 + 3] < 128) continue;
-    for (const z of [-1.6, -0.95]) {
-      targets.push({ pos: new THREE.Vector3((x - LW / 2 + 0.5) * L, FLOOR + (LH - y) * L + 1, z), cell: L, logo: true });
-    }
+    const at = logoAt(x + 0.5, y + 0.5);
+    add(at.x, at.y, LOGO_Z, L, 'logo');
   }
 }
 
-// 2. Where each module waits when spread out: a free slot on a 4-unit grid through the space
+// 2. Where each cube waits when spread out: a free slot on a 4-unit grid through the space
 const slots = [];
 for (let x = -SPAN_X; x <= SPAN_X; x += 4) {
   for (let y = -16; y <= 64; y += 4) for (let z = -52; z <= 16; z += 4) slots.push([x, y, z]);
@@ -105,7 +147,9 @@ try {
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2));
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 1, 500);
+// A soft studio environment, only seen as reflections on the metal emblem
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(40, 1, 1, 600);
 scene.add(new THREE.AmbientLight(0xffffff, 1.6));
 const sun = new THREE.DirectionalLight(0xffffff, 1.8);
 sun.position.set(30, 60, 80);
@@ -117,33 +161,72 @@ const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.M
 group.add(mesh);
 
 // Blueprint floor grid
-const grid = new THREE.GridHelper(SPAN_X * 2 + 16, (SPAN_X * 2 + 16) / 4);
+const grid = new THREE.GridHelper(SPAN_X * 2 + 40, (SPAN_X * 2 + 40) / 4);
 grid.position.y = FLOOR - 0.01;
 grid.material.transparent = true;
 grid.material.opacity = 0.7;
 group.add(grid);
 
-// The scan plane — a thin vertical sheet sweeping along x over the finished hall
+// The emblem — bevelled metal discs joined by round bars, with raised letters
+const shellMetal = new THREE.MeshStandardMaterial({ metalness: 0.9, roughness: 0.3, transparent: true });
+const letterMetal = new THREE.MeshStandardMaterial({ metalness: 0.5, roughness: 0.22, transparent: true });
+const emblem = new THREE.Group();
+const DISC_DEPTH = 1.4;
+const discShape = new THREE.Shape().absarc(0, 0, 7 * L, 0, Math.PI * 2);
+const disc = new THREE.ExtrudeGeometry(discShape, { depth: DISC_DEPTH, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 4, curveSegments: 64 });
+const centres = VERTS.map(([, x, y]) => logoAt(x, y));
+for (const c of centres) {
+  const d = new THREE.Mesh(disc, shellMetal);
+  d.position.set(c.x, c.y, -DISC_DEPTH / 2);
+  emblem.add(d);
+}
+for (let i = 0; i < 3; i++) {
+  const a = centres[i];
+  const b = centres[(i + 1) % 3];
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, a.distanceTo(b), 24), shellMetal);
+  bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
+  bar.rotation.z = Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2;
+  emblem.add(bar);
+}
+new FontLoader().load('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+  VERTS.forEach(([letter], i) => {
+    const geometry = new TextGeometry(letter, { font, size: 4.4, depth: 0.7, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 3, curveSegments: 8 });
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    geometry.translate(-(box.min.x + box.max.x) / 2, -(box.min.y + box.max.y) / 2, 0);
+    const text = new THREE.Mesh(geometry, letterMetal);
+    text.position.set(centres[i].x, centres[i].y, DISC_DEPTH / 2 + 0.25);
+    emblem.add(text);
+  });
+  if (still.matches) draw();
+});
+emblem.position.z = LOGO_Z;
+group.add(emblem);
+const shine = { k: 0 }; // 0 = logo still made of cubes, 1 = solid emblem
+
+// The scan plane — a thin vertical sheet sweeping along x over the finished site
 const scan = { x: -SPAN_X - 20 };
 const sheet = new THREE.Mesh(
   new THREE.PlaneGeometry(1, 1),
   new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }),
 );
 sheet.rotation.y = Math.PI / 2;
-sheet.scale.set(60, 50, 1);
-sheet.position.set(0, FLOOR + 25, -18);
+sheet.scale.set(70, 56, 1);
+sheet.position.set(0, FLOOR + 28, -20);
 group.add(sheet);
 
-// Greys only, kept close to the page colour so the text in front always wins.
-// The logo settles a step darker (lighter in dark mode) so it reads once assembled; the scan does the same to what it touches.
+// Greys only for the cubes, kept close to the page colour so the text in front always wins; glass and steel a step
+// darker (lighter in dark mode) so the buildings read. The emblem is graphite with silver letters (inverted in dark mode).
 let tone;
 function paint() {
   tone = dark.matches
-    ? { lo: 0.17, hi: 0.3, logo: 0.42, lit: 0.55, line: 0.24, sheet: 0.06 }
-    : { lo: 0.8, hi: 0.91, logo: 0.66, lit: 0.58, line: 0.86, sheet: 0.05 };
+    ? { lo: 0.17, hi: 0.28, roof: 0.33, glass: 0.1, steel: 0.4, lit: 0.55, line: 0.24, sheet: 0.06 }
+    : { lo: 0.8, hi: 0.9, roof: 0.94, glass: 0.6, steel: 0.68, lit: 0.55, line: 0.86, sheet: 0.05 };
   grid.material.color.setRGB(tone.line, tone.line, tone.line, THREE.SRGBColorSpace);
   sheet.material.color.setRGB(tone.lit, tone.lit, tone.lit, THREE.SRGBColorSpace);
   sheet.material.opacity = tone.sheet;
+  shellMetal.color.set(dark.matches ? 0xc9ccd2 : 0x2c2e33);
+  letterMetal.color.set(dark.matches ? 0x1a1b1f : 0xf4f2ee);
 }
 
 const m = new THREE.Matrix4();
@@ -168,16 +251,24 @@ function place(sec) {
     );
     q.slerpQuaternions(qa.setFromEuler(cube.turn), upright, across);
     const hit = Math.exp(-(((cube.pos.x - scan.x) / 6) ** 2)) * down;
-    s.setScalar((cube.size + (cube.cell * 0.9 - cube.size) * t) * (1 + hit * 0.25));
+    // Logo cubes shrink away as the emblem takes over
+    const handover = cube.kind === 'logo' ? 1 - shine.k : 1;
+    s.setScalar((cube.size + (cube.cell * 0.92 - cube.size) * t) * (1 + hit * 0.25) * handover);
     mesh.setMatrixAt(i, m.compose(p, q, s));
     const base = tone.lo + cube.shade * (tone.hi - tone.lo);
-    const settled = cube.logo ? base + (tone.logo - base) * down : base;
+    const goal = { roof: tone.roof, glass: tone.glass, steel: tone.steel, logo: tone.steel }[cube.kind] ?? base;
+    const settled = base + (goal - base) * down * (cube.kind === 'roof' ? 0.6 : 0.85);
     mesh.setColorAt(i, grey(settled + (tone.lit - settled) * hit));
   });
   mesh.instanceMatrix.needsUpdate = true;
   mesh.instanceColor.needsUpdate = true;
   sheet.position.x = scan.x;
   sheet.visible = Math.abs(scan.x) < SPAN_X + 10;
+  // The emblem slides forward out of the cube logo and fades in
+  emblem.visible = shine.k > 0.001;
+  shellMetal.opacity = letterMetal.opacity = shine.k;
+  emblem.position.z = LOGO_Z + shine.k * 1.5;
+  emblem.scale.setScalar(0.94 + shine.k * 0.06);
 }
 
 function fit() {
@@ -185,17 +276,17 @@ function fit() {
   const h = innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  // Looking down at the floor a little, aimed above the hall so it lands under the title and buttons;
-  // pull back on narrow screens so the hall still fits across
-  const back = camera.aspect < 1 ? 200 : 135;
+  // Looking down at the floor a little, aimed above the site so it lands under the title and buttons;
+  // far enough back that the whole site fits across wide screens
+  const back = camera.aspect < 1 ? 210 : Math.max(135, 72 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect));
   camera.position.set(0, 34, back);
-  camera.lookAt(0, camera.aspect < 1 ? 24 : 16, -10);
+  camera.lookAt(0, camera.aspect < 1 ? 27 : 19, -10);
   camera.updateProjectionMatrix();
 }
 
 function draw(time = 0) {
   const sec = still.matches ? 0 : time / 1000;
-  group.rotation.y = still.matches ? -0.3 : -0.25 + Math.sin(sec * 0.07) * 0.25;
+  group.rotation.y = still.matches ? -0.22 : -0.2 + Math.sin(sec * 0.07) * 0.22;
   place(sec);
   renderer.render(scene, camera);
 }
@@ -211,12 +302,13 @@ dark.addEventListener('change', () => {
   if (still.matches) draw();
 });
 
-// 4. Motion — spread out, assemble from the floor up (logo last), scan the finished twin, spread out again
+// 4. Motion — spread out, assemble from the floor up (logo last), the logo becomes metal, scan, then spread out again
 let timeline = null;
 function start() {
   timeline?.pause();
   if (still.matches) {
     cubes.forEach((cube) => (cube.t = 1));
+    shine.k = 1;
     draw();
     return;
   }
@@ -225,10 +317,12 @@ function start() {
       t: 1,
       duration: 1500,
       ease: 'inOutCubic',
-      delay: (cube) => cube.rise * 1800 + ((cube.pos.x + SPAN_X) / (SPAN_X * 2)) * 500 + (cube.logo ? 700 : 0),
+      delay: (cube) => cube.rise * 1800 + ((cube.pos.x + SPAN_X) / (SPAN_X * 2)) * 500 + (cube.kind === 'logo' ? 700 : 0),
     }, 3200)
-    .add(scan, { x: [-SPAN_X - 20, SPAN_X + 20], duration: 4200, ease: 'inOutSine' }, '+=300')
-    .add(cubes, { t: 0, duration: 1500, ease: 'inOutCubic', delay: (cube) => (1 - cube.rise) * 900 }, '+=1200');
+    .add(shine, { k: 1, duration: 900, ease: 'inOutSine' }, '+=100')
+    .add(scan, { x: [-SPAN_X - 20, SPAN_X + 20], duration: 4200, ease: 'inOutSine' }, '+=200')
+    .add(shine, { k: 0, duration: 600, ease: 'inOutSine' }, '+=1400')
+    .add(cubes, { t: 0, duration: 1500, ease: 'inOutCubic', delay: (cube) => (1 - cube.rise) * 900 }, '+=0');
   renderer.setAnimationLoop(draw);
 }
 still.addEventListener('change', () => {
