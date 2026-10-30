@@ -149,13 +149,13 @@ const arms = [
   arm({ x: 14, z: -20, size: 0.6, stand: 2.5, tool: gripper }),
 ];
 
-// Layers, bottom to top, with how far each lifts when the drawing is fully apart. Each label's dot floats just off
-// the right side of its part.
+// Layers, bottom to top, with how far each lifts when the drawing is fully apart. Label dots: Factory just outside the
+// middle of the roof's right edge, Robot cell beside the right arm, Work cell between the fences past the belt's end.
 const layers = [
   { group: floor, lift: 0 },
-  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(30, 6, 12) },
+  { group: cell, lift: 0, part: 'cell', anchor: new THREE.Vector3(25.5, 5, 12) },
   { group: robots, lift: 4, part: 'robot', anchor: new THREE.Vector3(22, 7, -20) },
-  { group: hall, lift: 44, back: 16, part: 'factory', anchor: new THREE.Vector3(40, 16, 32) },
+  { group: hall, lift: 44, back: 16, part: 'factory', anchor: new THREE.Vector3(40, 16, 0) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
