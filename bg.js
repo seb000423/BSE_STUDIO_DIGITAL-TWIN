@@ -1,6 +1,6 @@
 // Background — a line drawing of a small factory: a hall with a see-through sawtooth roof over three robot arms and a
 // work cell (a fenced conveyor).
-// It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
+// It stands between the title and the buttons. Clicking its floor grid lifts its parts off one another with a name label on each,
 // and clicking again puts them back together. The view angle never changes.
 // three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
 import * as THREE from 'three';
@@ -197,6 +197,7 @@ const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
 const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
+let hovering = false;
 const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0, peek: 0 }; // peek: a small lift inviting the first click
 
 // The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
@@ -245,7 +246,7 @@ function draw() {
     wrist.rotation.z = 0.74 - apart * 0.1;
   }
   ink.opacity = 0.8 * drawing;
-  fineInk.opacity = 0.2 * drawing;
+  fineInk.opacity = (hovering ? 0.42 : 0.2) * drawing;
   meshInk.opacity = 0.35 * drawing;
   paper.opacity = drawing;
   aim(lifted);
@@ -281,7 +282,7 @@ addEventListener('resize', () => {
 });
 addEventListener('scroll', draw, { passive: true }); // only very short windows scroll at all
 
-// 5. On load the drawing comes in, and lifts slightly now and then until the first click. Clicking opens or closes it.
+// 5. On load the drawing comes in, and lifts slightly now and then until the first click. Clicking its floor grid opens or closes it.
 fit();
 draw();
 let peeking = null;
@@ -290,7 +291,7 @@ if (!still.matches) {
   peeking = animate(state, { peek: 0.07, duration: 700, delay: 1600, loopDelay: 2200, ease: 'inOutSine', loop: true, alternate: true, onUpdate: draw });
 }
 let opened = false;
-room.addEventListener('click', () => {
+function toggle() {
   opened = !opened;
   room.setAttribute('aria-expanded', String(opened));
   if (still.matches) {
@@ -310,4 +311,25 @@ room.addEventListener('click', () => {
     animate(state, { named: 0, duration: 200, ease: 'inQuad', onUpdate: draw });
     animate(state, { apart: 0, duration: 1100, ease: 'inOutCubic', onUpdate: draw });
   }
+}
+room.addEventListener('click', toggle); // keyboard only: the button takes no pointer events
+
+// Only the floor grid responds to the pointer: the pointer's ray is tested against the floor's rectangle
+const ray = new THREE.Raycaster();
+const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const hit = new THREE.Vector3();
+function overFloor(e) {
+  ray.setFromCamera(new THREE.Vector2((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1), camera);
+  return Boolean(ray.ray.intersectPlane(floorPlane, hit)) && Math.abs(hit.x) <= FLOOR_W / 2 && Math.abs(hit.z) <= FLOOR_D / 2;
+}
+const onControl = (e) => e.target.closest?.('button, a');
+addEventListener('pointermove', (e) => {
+  const over = !onControl(e) && overFloor(e);
+  if (over === hovering) return;
+  hovering = over;
+  document.documentElement.style.cursor = over ? 'pointer' : '';
+  draw(); // the grid brightens under the pointer
+});
+addEventListener('click', (e) => {
+  if (!onControl(e) && overFloor(e)) toggle();
 });
