@@ -71,7 +71,19 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 .head { flex: none; padding: 12px 0 4px; }
 
 /* The drawing is centred on the space left between the title and the buttons, and may run a little past it */
-.room { flex: 1; align-self: stretch; min-height: 260px; }
+.room { position: relative; flex: 1; align-self: stretch; min-height: 260px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.room:focus-visible { outline: 2px solid var(--foreground); outline-offset: -2px; }
+/* The invitation to click: a small pill at the foot of the drawing with a pulsing dot */
+.cue { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; background: var(--background); }
+.cue i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); animation: cue-pulse 1.8s ease-out infinite; }
+.room:hover .cue { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.room:hover .cue i { background: var(--primary-foreground); }
+.room[aria-expanded='true'] .when-closed, .room[aria-expanded='false'] .when-open { display: none; }
+@keyframes cue-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--line) 45%, transparent); }
+  100% { box-shadow: 0 0 0 9px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .cue i { animation: none; } }
 #bg { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
 /* Name labels follow the parts of the drawing (positions set by bg.js) */

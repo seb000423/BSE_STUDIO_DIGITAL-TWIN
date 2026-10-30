@@ -1,9 +1,9 @@
 // Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
-// It stands large between the title and the buttons. Pointing at it (or, on touch screens, a loop) lifts its parts off
-// one another with a name label on each, and they come back together. The view angle never changes.
+// It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
+// and clicking again puts them back together. The view angle never changes.
 // three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
 import * as THREE from 'three';
-import { animate, createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
+import { animate } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
 
 const canvas = document.getElementById('bg');
 const room = document.querySelector('.room');
@@ -151,7 +151,7 @@ relabel();
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
 const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
-const state = still.matches ? { apart: 1, named: 1, drawing: 1 } : { apart: 0, named: 0, drawing: 0 };
+const state = { apart: 0, named: 0, drawing: still.matches ? 1 : 0, peek: 0 }; // peek: a small lift inviting the first click
 
 // The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
 // picture is shifted so its middle stays in the middle of the room between the title and the buttons.
@@ -172,8 +172,8 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 50, W / 84);
-  const open = Math.min(roomH / 74, W / 104);
+  const closed = Math.min(roomH / 62, W / 100);
+  const open = Math.min(roomH / 92, W / 124);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 15;
@@ -186,21 +186,23 @@ function aim(apart) {
 
 const p3 = new THREE.Vector3();
 function draw() {
-  const { apart, named, drawing } = state;
-  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * apart;
-  turret.rotation.y = -0.6 + apart * 1.4;
-  shoulder.rotation.z = 0.35 - apart * 0.7;
-  elbow.rotation.z = 1.1 + apart * 0.5;
-  wrist.rotation.z = 0.4 - apart * 0.6;
+  const { apart, named, drawing, peek } = state;
+  const lifted = apart + peek;
+  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * lifted;
+  // Closed, the arm bends over its work with the gripper pointing down; open, it straightens up a little
+  turret.rotation.y = 2.7 - apart * 0.8;
+  shoulder.rotation.z = 0.3 - apart * 0.15;
+  elbow.rotation.z = 2.1 - apart * 0.8;
+  wrist.rotation.z = 0.74 - apart * 0.1;
   ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
-  aim(apart);
+  aim(lifted);
   renderer.render(scene, camera);
 
   // Labels: anchor projected to the screen, text in a column to the right of the drawing
   const column = camera.aspect < 1 ? W - 8 : W / 2 + Math.min(W / 2 - 24, roomH * 1.05);
   for (const label of labels) {
     p3.copy(label.layer.anchor);
-    p3.y += label.layer.lift * apart;
+    p3.y += label.layer.lift * lifted;
     p3.project(camera);
     label.x = (p3.x * 0.5 + 0.5) * W;
     label.y = (-p3.y * 0.5 + 0.5) * H;
@@ -230,27 +232,33 @@ dark.addEventListener('change', () => {
   draw();
 });
 
-// 5. On load the drawing comes in. With a mouse, pointing at it opens it with its labels, and moving away closes it.
-// Touch screens have nothing to point with, so there it opens and closes by itself on a loop.
+// 5. On load the drawing comes in, and lifts slightly now and then until the first click. Clicking opens or closes it.
 fit();
 draw();
+let peeking = null;
 if (!still.matches) {
   animate(state, { drawing: 1, duration: 900, ease: 'outCubic', onUpdate: draw });
-  if (matchMedia('(hover: hover)').matches) {
-    room.addEventListener('pointerenter', () => {
-      animate(state, { apart: 1, duration: 1200, ease: 'inOutCubic', onUpdate: draw });
-      animate(state, { named: 1, duration: 500, delay: 800, ease: 'outQuad', onUpdate: draw });
-    });
-    room.addEventListener('pointerleave', () => {
-      animate(state, { named: 0, duration: 200, ease: 'inQuad', onUpdate: draw });
-      animate(state, { apart: 0, duration: 1000, ease: 'inOutCubic', onUpdate: draw });
-    });
-  } else {
-    createTimeline({ loop: true, loopDelay: 1400 })
-      .add(state, { apart: 1, duration: 2400, ease: 'inOutCubic' }, 1600)
-      .add(state, { named: 1, duration: 700, ease: 'outQuad' }, 3400)
-      .add(state, { named: 0, duration: 400, ease: 'inQuad' }, 7200)
-      .add(state, { apart: 0, duration: 2200, ease: 'inOutCubic' }, 7400);
-    renderer.setAnimationLoop(draw);
-  }
+  peeking = animate(state, { peek: 0.07, duration: 700, delay: 1600, loopDelay: 2200, ease: 'inOutSine', loop: true, alternate: true, onUpdate: draw });
 }
+let opened = false;
+room.addEventListener('click', () => {
+  opened = !opened;
+  room.setAttribute('aria-expanded', String(opened));
+  if (still.matches) {
+    state.apart = state.named = opened ? 1 : 0;
+    draw();
+    return;
+  }
+  if (peeking) {
+    peeking.pause();
+    peeking = null;
+    animate(state, { peek: 0, duration: 300, ease: 'outQuad', onUpdate: draw });
+  }
+  if (opened) {
+    animate(state, { apart: 1, duration: 1300, ease: 'inOutCubic', onUpdate: draw });
+    animate(state, { named: 1, duration: 500, delay: 900, ease: 'outQuad', onUpdate: draw });
+  } else {
+    animate(state, { named: 0, duration: 200, ease: 'inQuad', onUpdate: draw });
+    animate(state, { apart: 0, duration: 1100, ease: 'inOutCubic', onUpdate: draw });
+  }
+});
