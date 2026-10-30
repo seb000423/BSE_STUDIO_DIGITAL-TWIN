@@ -179,7 +179,7 @@ function start() {
     animate(modules, {
       k: [0, 1],
       duration: 700,
-      ease: 'outBack',
+      ease: 'outCubic',
       delay: (mod) => ((mod.pos.x + SPAN_X) / (SPAN_X * 2)) * 1400 + Math.random() * 300,
     }),
     animate(scan, {
