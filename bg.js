@@ -33,33 +33,36 @@ const wires = (points, parent) => {
   return lines;
 };
 
-// Floor slab with an even layout grid: a fine line every 2 units, a heavier one every 10
-const FLOOR_W = 64;
-const FLOOR_D = 40;
+// Floor slab with an even layout grid: a fine line every 2 units, a heavier one every 10. Both sizes are multiples of 10,
+// so every cell is whole right up to the edge, and the floor runs well past the hall on all sides.
+const FLOOR_W = 80;
+const FLOOR_D = 60;
+const HALL_W = 64;
+const HALL_D = 40;
 const floor = new THREE.Group();
 box(FLOOR_W, 1, FLOOR_D, 0, -1, 0, floor);
 const marks = (step, material) => {
   const points = [];
-  for (let x = Math.ceil(-FLOOR_W / 2 / step) * step; x <= FLOOR_W / 2; x += step) points.push(x, 0.02, -FLOOR_D / 2, x, 0.02, FLOOR_D / 2);
-  for (let z = Math.ceil(-FLOOR_D / 2 / step) * step; z <= FLOOR_D / 2; z += step) points.push(-FLOOR_W / 2, 0.02, z, FLOOR_W / 2, 0.02, z);
+  for (let x = -FLOOR_W / 2; x <= FLOOR_W / 2; x += step) points.push(x, 0.02, -FLOOR_D / 2, x, 0.02, FLOOR_D / 2);
+  for (let z = -FLOOR_D / 2; z <= FLOOR_D / 2; z += step) points.push(-FLOOR_W / 2, 0.02, z, FLOOR_W / 2, 0.02, z);
   wires(points, floor).material = material;
 };
 marks(2, fineInk);
 marks(10, ink);
 
-// The hall over the whole floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only, so it hides nothing
+// The hall on the floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only, so it hides nothing
 const hall = new THREE.Group();
 for (let x = -30; x <= 30; x += 10) for (const z of [-19.5, 19.5]) box(0.8, 16, 0.8, x, 0, z, hall);
-for (const z of [-19.5, 19.5]) box(FLOOR_W, 0.6, 0.6, 0, 15.4, z, hall);
-for (const x of [-31.7, 31.7]) box(0.6, 0.6, FLOOR_D, x, 15.4, 0, hall);
+for (const z of [-19.5, 19.5]) box(HALL_W, 0.6, 0.6, 0, 15.4, z, hall);
+for (const x of [-31.7, 31.7]) box(0.6, 0.6, HALL_D, x, 15.4, 0, hall);
 const tooth = new THREE.Shape();
-tooth.moveTo(-FLOOR_W / 2, 0);
+tooth.moveTo(-HALL_W / 2, 0);
 for (let i = 0; i < 4; i++) {
-  tooth.lineTo(-FLOOR_W / 2 + i * 16 + 13, 6);
-  tooth.lineTo(-FLOOR_W / 2 + i * 16 + 16, 0);
+  tooth.lineTo(-HALL_W / 2 + i * 16 + 13, 6);
+  tooth.lineTo(-HALL_W / 2 + i * 16 + 16, 0);
 }
-tooth.lineTo(-FLOOR_W / 2, 0);
-const roof = outline(new THREE.ExtrudeGeometry(tooth, { depth: FLOOR_D, bevelEnabled: false }), 0, 16, -FLOOR_D / 2, hall);
+tooth.lineTo(-HALL_W / 2, 0);
+const roof = outline(new THREE.ExtrudeGeometry(tooth, { depth: HALL_D, bevelEnabled: false }), 0, 16, -HALL_D / 2, hall);
 roof.clear();
 
 // Work cell: a conveyor (frame, legs, rollers, a few parcels) running between two fences
@@ -173,7 +176,7 @@ function paint() {
   paper.color.set(css.getPropertyValue('--paper').trim());
 }
 
-// 3. Labels — one per part, in English only: a dot on the part, a short leader line, the name
+// 3. Labels — one per part, in English only: a dot on the part, a leader line, the name
 const labels = [...document.querySelectorAll('.labels .label')].map((el) => {
   const text = document.createElement('b');
   const lead = document.createElement('i');
@@ -206,8 +209,8 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 62, W / 100);
-  const open = Math.min(roomH / 92, W / 124);
+  const closed = Math.min(roomH / 68, W / 112);
+  const open = Math.min(roomH / 98, W / 132);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 15;
@@ -217,7 +220,6 @@ function aim(apart) {
   camera.updateMatrixWorld();
 }
 
-const LEAD = 26;
 const p3 = new THREE.Vector3();
 function draw() {
   const { apart, named, drawing, peek } = state;
@@ -236,7 +238,8 @@ function draw() {
   aim(lifted);
   renderer.render(scene, camera);
 
-  // Labels sit right beside their part, on a short leader line
+  // Labels: a leader line from the part out to a column to the right of the drawing
+  const column = camera.aspect < 1 ? W - 8 : W / 2 + Math.min(W / 2 - 24, roomH * 1.05);
   for (const label of labels) {
     p3.copy(label.layer.anchor);
     p3.y += label.layer.lift * lifted;
@@ -250,9 +253,8 @@ function draw() {
     return label.y;
   }, -Infinity);
   labels.forEach((label, i) => {
-    const y = label.y;
-    const x = Math.min(label.x, W - 8 - LEAD - 13 - label.text.offsetWidth); // never past the screen edge
-    label.lead.style.width = `${LEAD}px`;
+    const { x, y } = label;
+    label.lead.style.width = `${Math.max(12, column - label.text.offsetWidth - 13 - x)}px`;
     label.el.style.transform = `translate(${x - 2.5}px, ${y - 9}px)`;
     label.el.style.opacity = String(span(named, i * 0.12, i * 0.12 + 0.5));
   });
