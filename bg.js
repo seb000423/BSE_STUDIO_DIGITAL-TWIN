@@ -1,4 +1,4 @@
-// Background — a line drawing of a small factory: the hall, a conveyor, three robot arms and a work cell on one floor.
+// Background — a line drawing of a small factory: the hall, three robot arms and a work cell (a fenced conveyor) on one floor.
 // It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
 // and clicking again puts them back together. The view angle never changes.
 // three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
@@ -44,36 +44,26 @@ tooth.lineTo(-32, 0);
 outline(new THREE.ExtrudeGeometry(tooth, { depth: 40, bevelEnabled: false }), 0, 16, -20, hall);
 box(64, 0.6, 40, 0, 15.4, 0, hall);
 
-// Conveyor along the front: frame, legs, rollers and a few parcels
-const conveyor = new THREE.Group();
-box(46, 0.8, 4, 4, 4, 12, conveyor);
-for (let x = -16; x <= 24; x += 8) for (const z of [10.4, 13.6]) box(0.5, 4, 0.5, x, 0, z, conveyor);
+// Work cell: a conveyor (frame, legs, rollers, a few parcels) running between two fences
+const cell = new THREE.Group();
+box(46, 0.8, 4, 4, 4, 12, cell);
+for (let x = -16; x <= 24; x += 8) for (const z of [10.4, 13.6]) box(0.5, 4, 0.5, x, 0, z, cell);
 for (let x = -18; x <= 26; x += 2.2) {
-  const roller = drum(0.35, 3.6, x, 0, 0, conveyor, 8);
+  const roller = drum(0.35, 3.6, x, 0, 0, cell, 8);
   roller.rotation.x = Math.PI / 2;
   roller.position.set(x, 5.1, 12);
 }
-for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, conveyor);
+for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, cell);
 
-// Work cell: a long fenced bay behind the conveyor and parallel to it, with a gate and a workbench
-const cell = new THREE.Group();
-const CELL_W = 40;
-const CELL_D = 14;
-const CELL_Z = -9;
-const back = CELL_Z - CELL_D / 2;
-const front = CELL_Z + CELL_D / 2;
-for (const x of [-CELL_W / 2, CELL_W / 2]) for (const z of [back, front]) box(0.5, 9, 0.5, x, 0, z, cell);
-for (const y of [0.5, 4.5, 9]) {
-  box(CELL_W, 0.2, 0.2, 0, y, back, cell);
-  box(0.2, 0.2, CELL_D, -CELL_W / 2, y, CELL_Z, cell);
-  box(0.2, 0.2, CELL_D, CELL_W / 2, y, CELL_Z, cell);
-  box(CELL_W - 8, 0.2, 0.2, -4, y, front, cell); // the gap at the right end is the gate
+// The fences, either side of the belt; both ends stay open for the conveyor
+const FENCE_H = 6;
+for (const z of [7.5, 16.5]) {
+  for (const x of [-22, 30]) box(0.5, FENCE_H, 0.5, x, 0, z, cell);
+  for (const y of [0.5, FENCE_H / 2, FENCE_H]) box(52, 0.2, 0.2, 4, y, z, cell);
+  for (let x = -18; x < 30; x += 4) box(0.05, FENCE_H, 0.05, x, 0, z, cell);
 }
-for (let x = -CELL_W / 2 + 2; x < CELL_W / 2; x += 2) box(0.05, 9, 0.05, x, 0, back, cell);
-box(14, 0.6, 5, -4, 3.4, CELL_Z, cell);
-for (const x of [-10, 2]) for (const z of [CELL_Z - 2, CELL_Z + 2]) box(0.5, 3.4, 0.5, x, 0, z, cell);
 
-// Robot arms in front of the fence, reaching over to the conveyor. Same build, three sizes, each with a tool for its job;
+// Robot arms outside the back fence, reaching over it to the conveyor. Same build, three sizes, each with a tool for its job;
 // joints are pivots so they can move.
 function arm({ x, z, size, stand, tool }) {
   const base = new THREE.Group();
@@ -126,17 +116,16 @@ const torch = (w) => {
 };
 const robots = new THREE.Group();
 const arms = [
-  arm({ x: -17, z: 3, size: 1.25, stand: 0, tool: suction }),
-  arm({ x: -2, z: 4.5, size: 0.9, stand: 1, tool: torch }),
-  arm({ x: 11, z: 6.5, size: 0.6, stand: 2.5, tool: gripper }),
+  arm({ x: -14, z: 2, size: 1.25, stand: 0, tool: suction }),
+  arm({ x: 1, z: 4, size: 0.9, stand: 3, tool: torch }),
+  arm({ x: 13, z: 5.5, size: 0.6, stand: 2.5, tool: gripper }),
 ];
 
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: conveyor, lift: 7, part: 'conveyor', anchor: new THREE.Vector3(27, 5, 12) },
-  { group: robots, lift: 13, part: 'robot', anchor: new THREE.Vector3(-13, 17, 3) },
-  { group: cell, lift: 20, part: 'cell', anchor: new THREE.Vector3(20, 9, -16) },
+  { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(30, 6, 7.5) },
+  { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(-10, 17, 2) },
   { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
 for (const layer of layers) {
@@ -221,7 +210,7 @@ function draw() {
   for (const layer of layers) layer.group.position.y = layer.base + layer.lift * lifted;
   // Closed, each arm bends over the conveyor with its tool pointing down; open, it straightens up a little
   for (const { turret, shoulder, elbow, wrist } of arms) {
-    turret.rotation.y = 2.47 - apart * 0.6;
+    turret.rotation.y = 2 - apart * 0.5;
     shoulder.rotation.z = 0.3 - apart * 0.15;
     elbow.rotation.z = 2.1 - apart * 0.8;
     wrist.rotation.z = 0.74 - apart * 0.1;
