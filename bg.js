@@ -1,7 +1,7 @@
 // Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
-// It sits between the title and the buttons; pointing at it (or, on touch screens, a loop) lifts its parts off one
-// another with a name label on each, and they come back together. The camera never moves. Behind the title, the BSE logo stays on as a halftone of dots.
-// three.js draws the model, anime.js times the loop. Both load from a CDN; no build step.
+// It stands large between the title and the buttons. Pointing at it (or, on touch screens, a loop) lifts its parts off
+// one another with a name label on each, and they come back together. The view angle never changes.
+// three.js draws the model, anime.js times the opening. Both load from a CDN; no build step.
 import * as THREE from 'three';
 import { animate, createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
 
@@ -104,10 +104,10 @@ box(0.4, 1.6, 0.8, 1, 1.9, 0, wrist);
 // Layers, bottom to top, with how far each lifts when the drawing is fully apart
 const layers = [
   { group: floor, lift: 0 },
-  { group: conveyor, lift: 8, part: 'conveyor', anchor: new THREE.Vector3(27, 5, 12) },
-  { group: robot, lift: 16, part: 'robot', anchor: new THREE.Vector3(3, 18, -5) },
-  { group: cell, lift: 26, part: 'cell', anchor: new THREE.Vector3(-3, 9, -13) },
-  { group: hall, lift: 38, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
+  { group: conveyor, lift: 7, part: 'conveyor', anchor: new THREE.Vector3(27, 5, 12) },
+  { group: robot, lift: 13, part: 'robot', anchor: new THREE.Vector3(3, 18, -5) },
+  { group: cell, lift: 20, part: 'cell', anchor: new THREE.Vector3(-3, 9, -13) },
+  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -126,7 +126,8 @@ try {
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 scene.add(model);
-const camera = new THREE.PerspectiveCamera(32, 1, 1, 1000);
+const FOV = 18;
+const camera = new THREE.PerspectiveCamera(FOV, 1, 1, 2000);
 
 function paint() {
   ink.color.set(getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#333');
@@ -146,30 +147,40 @@ function relabel() {
 new MutationObserver(relabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 relabel();
 
-// 4. One state for the whole loop, moved by the timeline at the end of this file
+// 4. One state, moved by the animations at the end of this file
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const smooth = (v) => v * v * (3 - 2 * v);
 const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
-const state = still.matches ? { apart: 1, named: 1, drawing: 1, logo: 1 } : { apart: 0, named: 0, drawing: 0, logo: 0 };
+const state = still.matches ? { apart: 1, named: 1, drawing: 1 } : { apart: 0, named: 0, drawing: 0 };
 
-// The camera is fixed; it only gets fitted to the room between the title and the buttons
+// The view angle is fixed. The camera only moves back as the drawing opens, so the taller stack still fits, and the
+// picture is shifted so its middle stays in the middle of the room between the title and the buttons.
 const YAW = -0.42;
 const PITCH = 0.55;
-const CENTRE = new THREE.Vector3(0, 24, 0);
 let W = 1;
 let H = 1;
+let roomH = 1;
+let roomMid = 0;
 function fit() {
-  W = room.clientWidth;
-  H = room.clientHeight;
+  W = innerWidth;
+  H = innerHeight;
+  const box = room.getBoundingClientRect();
+  roomH = box.height;
+  roomMid = box.top + scrollY + box.height / 2;
   renderer.setSize(W, H, false);
   camera.aspect = W / H;
-  // far enough back for the full height of the stacked drawing, and for its width on narrow screens
-  const dist = Math.max(72000 / H, 50 / (Math.tan(THREE.MathUtils.degToRad(16)) * camera.aspect));
-  camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, CENTRE.y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
-  camera.lookAt(CENTRE);
-  // on phones the drawing sits a little left, leaving room for the labels on the right
-  if (camera.aspect < 1) camera.setViewOffset(W, H, W * 0.07, 0, W, H);
-  else camera.clearViewOffset();
+}
+function aim(apart) {
+  // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
+  const closed = Math.min(roomH / 50, W / 84);
+  const open = Math.min(roomH / 74, W / 104);
+  const scale = closed + (open - closed) * apart;
+  const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+  const y = 9 + apart * 15;
+  camera.position.set(Math.sin(YAW) * Math.cos(PITCH) * dist, y + Math.sin(PITCH) * dist, Math.cos(YAW) * Math.cos(PITCH) * dist);
+  camera.lookAt(0, y, 0);
+  // on phones the open drawing sits a little left, leaving room for the labels on the right
+  camera.setViewOffset(W, H, camera.aspect < 1 ? W * 0.07 * apart : 0, H / 2 - (roomMid - scrollY), W, H);
   camera.updateMatrixWorld();
 }
 
@@ -182,10 +193,11 @@ function draw() {
   elbow.rotation.z = 1.1 + apart * 0.5;
   wrist.rotation.z = 0.4 - apart * 0.6;
   ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
+  aim(apart);
   renderer.render(scene, camera);
 
   // Labels: anchor projected to the screen, text in a column to the right of the drawing
-  const column = camera.aspect < 1 ? W - 8 : W / 2 + Math.min(W / 2 - 24, H * 1.05);
+  const column = camera.aspect < 1 ? W - 8 : W / 2 + Math.min(W / 2 - 24, roomH * 1.05);
   for (const label of labels) {
     p3.copy(label.layer.anchor);
     p3.y += label.layer.lift * apart;
@@ -193,11 +205,11 @@ function draw() {
     label.x = (p3.x * 0.5 + 0.5) * W;
     label.y = (-p3.y * 0.5 + 0.5) * H;
   }
-  // Keep the labels inside the room and at least a line apart, top to bottom
+  // Keep the labels at least a line apart, top to bottom
   [...labels].sort((a, b) => a.y - b.y).reduce((above, label) => {
     label.y = Math.max(label.y, above + 22);
     return label.y;
-  }, -12);
+  }, -Infinity);
   labels.forEach((label, i) => {
     const { x, y } = label;
     const reach = Math.max(12, column - label.text.offsetWidth - 13 - x);
@@ -208,81 +220,22 @@ function draw() {
 }
 
 paint();
-new ResizeObserver(() => {
+addEventListener('resize', () => {
   fit();
   draw();
-}).observe(room);
+});
+addEventListener('scroll', draw, { passive: true }); // only very short windows scroll at all
 dark.addEventListener('change', () => {
   paint();
   draw();
 });
 
-// 5. The BSE logo as dots — traced from the header SVG (42×38), letters punched out, filled in from the centre on load
-const dots = document.querySelector('.mark .dots');
-const STEP = 1.1;
-const LW = 42;
-const LH = 38;
-const RES = 4;
-const trace = document.createElement('canvas');
-trace.width = LW * RES;
-trace.height = LH * RES;
-const g = trace.getContext('2d', { willReadFrequently: true });
-g.filter = `blur(${RES * 0.6}px)`;
-g.scale(RES, RES);
-g.lineWidth = 2.2;
-g.lineJoin = 'round';
-g.beginPath();
-g.moveTo(21, 8);
-g.lineTo(8, 30);
-g.lineTo(34, 30);
-g.closePath();
-g.stroke();
-const VERTS = [['B', 21, 8], ['S', 8, 30], ['E', 34, 30]];
-for (const [, x, y] of VERTS) {
-  g.beginPath();
-  g.arc(x, y, 7, 0, Math.PI * 2);
-  g.fill();
-}
-g.globalCompositeOperation = 'destination-out';
-g.font = '800 10px Arial, Helvetica, sans-serif';
-g.textAlign = 'center';
-g.textBaseline = 'middle';
-for (const [letter, x, y] of VERTS) g.fillText(letter, x, y + 0.5);
-const pixels = g.getImageData(0, 0, trace.width, trace.height).data;
-dots.setAttribute('viewBox', `-1 -1 ${LW + 2} ${LH + 2}`);
-const svgNS = 'http://www.w3.org/2000/svg';
-const sizes = [];
-for (let y = STEP / 2; y < LH; y += STEP) {
-  for (let x = STEP / 2; x < LW; x += STEP) {
-    const a = pixels[(Math.round(y * RES) * trace.width + Math.round(x * RES)) * 4 + 3] / 255;
-    if (a < 0.06) continue;
-    const dot = document.createElementNS(svgNS, 'circle');
-    dot.setAttribute('cx', x.toFixed(2));
-    dot.setAttribute('cy', y.toFixed(2));
-    dot.setAttribute('r', '0');
-    dot.dataset.d = String(Math.hypot(x - 21, y - 22) / 24);
-    dots.append(dot);
-    sizes.push(STEP * 0.48 * (0.25 + 0.75 * a));
-  }
-}
-const circles = [...dots.children];
-// Filled in from the centre out
-function fillDots() {
-  const q = state.logo;
-  circles.forEach((dot, i) => {
-    const own = smooth(clamp((q - Number(dot.dataset.d) * 0.45) / 0.55));
-    dot.setAttribute('r', (sizes[i] * own).toFixed(3));
-  });
-}
-
-// 6. On load the drawing and the logo come in. With a mouse, pointing at the drawing opens it, with its labels, and moving
-// away closes it. Touch screens have nothing to point with, so there it opens and closes by itself on a loop.
+// 5. On load the drawing comes in. With a mouse, pointing at it opens it with its labels, and moving away closes it.
+// Touch screens have nothing to point with, so there it opens and closes by itself on a loop.
 fit();
-fillDots();
 draw();
 if (!still.matches) {
   animate(state, { drawing: 1, duration: 900, ease: 'outCubic', onUpdate: draw });
-  animate(state, { logo: 1, duration: 1800, ease: 'linear', onUpdate: fillDots });
   if (matchMedia('(hover: hover)').matches) {
     room.addEventListener('pointerenter', () => {
       animate(state, { apart: 1, duration: 1200, ease: 'inOutCubic', onUpdate: draw });

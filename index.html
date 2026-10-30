@@ -9,6 +9,14 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <canvas id="bg" aria-hidden="true"></canvas>
+    <!-- Name labels on the parts of the drawing -->
+    <div class="labels" aria-hidden="true">
+      <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
+      <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
+      <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
+      <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
+    </div>
     <header class="bar">
       <span class="side"></span>
       <a class="brand" href="index.html" data-title-ko="처음 화면으로" data-title-en="Back to start">
@@ -33,21 +41,11 @@
 
     <main class="welcome">
       <div class="head">
-        <!-- The BSE logo as dots, always there behind the title (drawn by bg.js) -->
-        <div class="mark" aria-hidden="true"><svg class="dots"></svg></div>
         <span class="title">BSE : Digital Twin</span>
         <h1>Build · Simulate · Execute</h1>
       </div>
-      <!-- The line drawing of the factory and the name labels on its parts (bg.js) -->
-      <div class="room" aria-hidden="true">
-        <canvas id="bg"></canvas>
-        <div class="labels">
-          <span class="label" data-part="factory" data-ko="공장" data-en="Factory"></span>
-          <span class="label" data-part="cell" data-ko="작업셀" data-en="Work cell"></span>
-          <span class="label" data-part="robot" data-ko="로봇팔" data-en="Robot arm"></span>
-          <span class="label" data-part="conveyor" data-ko="컨베이어" data-en="Conveyor"></span>
-        </div>
-      </div>
+      <!-- Empty on purpose: the space the factory drawing is centred on, and what the pointer opens it from (bg.js) -->
+      <div class="room" aria-hidden="true"></div>
       <div class="row-buttons">
         <button class="button" data-ko="빌드 화면은 준비 중입니다." data-en="The build view is coming soon.">Build</button>
         <button class="button" data-ko="모니터링 화면은 준비 중입니다." data-en="The monitoring view is coming soon.">Monitor</button>
