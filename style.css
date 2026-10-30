@@ -1,7 +1,7 @@
 /* Tokens after BSE Studio (styles/drive.css), on a warm paper grey with a drafting grid; near-square corners */
 :root {
   --radius: 0.125rem;
-  --background: oklch(0.88 0.006 85);
+  --background: #d9d7d2; /* hex: bg.js also fills the drawing's solid faces with it */
   --grid: oklch(0.2 0.01 85 / 7%);
   --line: #35332f; /* hex: bg.js hands it to three.js */
   --foreground: oklch(0.145 0 0);
@@ -14,7 +14,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.2 0.004 85);
+    --background: #1b1a18;
     --grid: oklch(0.95 0.01 85 / 6%);
     --line: #d8d4cb;
     --foreground: oklch(0.985 0 0);
@@ -29,11 +29,13 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--foreground); -webkit-font-smoothing: antialiased; }
-/* 24px drafting grid, fixed so it stays put while the page scrolls */
+/* Drafting grid: fine lines every 24px, a heavier one every 120px; fixed so it stays put if the page scrolls */
 body {
   background: var(--background);
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
   background-attachment: fixed;
 }
 body { display: flex; flex-direction: column; min-height: 100%; }

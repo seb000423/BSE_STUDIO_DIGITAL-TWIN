@@ -10,10 +10,13 @@ const room = document.querySelector('.room');
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 const dark = matchMedia('(prefers-color-scheme: dark)');
 
-// 1. Drawing kit — every part is outlines only
+// 1. Drawing kit — every part is outlines over solid faces in the page colour, so lines behind a part stay hidden
 const ink = new THREE.LineBasicMaterial({ transparent: true });
+const fineInk = new THREE.LineBasicMaterial({ transparent: true });
+const paper = new THREE.MeshBasicMaterial({ transparent: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
 function outline(geometry, x = 0, y = 0, z = 0, parent) {
   const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), ink);
+  lines.add(new THREE.Mesh(geometry, paper));
   lines.position.set(x, y, z);
   parent?.add(lines);
   return lines;
@@ -23,13 +26,17 @@ const drum = (r, h, x, y, z, parent, segments = 16) => outline(new THREE.Cylinde
 
 const model = new THREE.Group();
 
-// Floor slab with the hall's column grid marked on it
+// Floor slab with a layout grid marked on it: a fine line every 2 units, a heavier one on the hall's column grid
 const floor = new THREE.Group();
 box(64, 1, 40, 0, -1, 0, floor);
-const marks = [];
-for (let x = -30; x <= 30; x += 10) marks.push(x, 0.02, -20, x, 0.02, 20);
-for (let z = -20; z <= 20; z += 10) marks.push(-32, 0.02, z, 32, 0.02, z);
-floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(marks, 3)), ink));
+const marks = (step, material) => {
+  const points = [];
+  for (let x = -30; x <= 30; x += step) points.push(x, 0.02, -20, x, 0.02, 20);
+  for (let z = -20; z <= 20; z += step) points.push(-32, 0.02, z, 32, 0.02, z);
+  floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(points, 3)), material));
+};
+marks(2, fineInk);
+marks(10, ink);
 
 // The hall: columns and a sawtooth roof over the whole floor
 const hall = new THREE.Group();
@@ -149,7 +156,10 @@ const FOV = 18;
 const camera = new THREE.PerspectiveCamera(FOV, 1, 1, 2000);
 
 function paint() {
-  ink.color.set(getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#333');
+  const css = getComputedStyle(document.documentElement);
+  ink.color.set(css.getPropertyValue('--line').trim());
+  fineInk.color.copy(ink.color);
+  paper.color.set(css.getPropertyValue('--background').trim());
 }
 
 // 3. Labels — one per part, a dot on the part and a leader line out to a column on the right
@@ -216,6 +226,8 @@ function draw() {
     wrist.rotation.z = 0.74 - apart * 0.1;
   }
   ink.opacity = (dark.matches ? 0.7 : 0.62) * drawing;
+  fineInk.opacity = 0.18 * drawing;
+  paper.opacity = drawing;
   aim(lifted);
   renderer.render(scene, camera);
 
