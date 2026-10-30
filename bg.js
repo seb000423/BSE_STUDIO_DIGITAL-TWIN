@@ -1,4 +1,4 @@
-// Background — a line drawing of a small factory on one wide floor: the hall on the left; three robot arms and a work
+// Background — a line drawing of a small factory on one wide floor: the factory building on the left; three robot arms and a work
 // cell (a fenced conveyor) on the right.
 // It stands between the title and the buttons. Clicking it lifts its parts off one another with a name label on each,
 // and clicking again puts them back together. The view angle never changes.
@@ -40,13 +40,13 @@ const marks = (step, material) => {
 marks(2, fineInk);
 marks(10, ink);
 
-// The hall on the left half of the floor: columns, eaves beams and a four-bay sawtooth roof drawn in lines only
+// The factory on the left half of the floor: solid walls, a sawtooth roof, windows, dock doors, stacks and silos
 const HALL_W = 64;
+const WALL_H = 16;
+const FRONT = FLOOR_D / 2 + 0.06;
 const hall = new THREE.Group();
 hall.position.x = -33;
-for (let x = -31; x <= 31; x += 62 / 4) for (const z of [-FLOOR_D / 2 + 0.5, FLOOR_D / 2 - 0.5]) box(0.8, 16, 0.8, x, 0, z, hall);
-for (const z of [-FLOOR_D / 2 + 0.5, FLOOR_D / 2 - 0.5]) box(HALL_W, 0.6, 0.6, 0, 15.4, z, hall);
-for (const x of [-31.7, 31.7]) box(0.6, 0.6, FLOOR_D, x, 15.4, 0, hall);
+box(HALL_W, WALL_H, FLOOR_D, 0, 0, 0, hall);
 const tooth = new THREE.Shape();
 tooth.moveTo(-HALL_W / 2, 0);
 for (let i = 0; i < 4; i++) {
@@ -54,8 +54,27 @@ for (let i = 0; i < 4; i++) {
   tooth.lineTo(-HALL_W / 2 + i * 16 + 16, 0);
 }
 tooth.lineTo(-HALL_W / 2, 0);
-const roof = outline(new THREE.ExtrudeGeometry(tooth, { depth: FLOOR_D, bevelEnabled: false }), 0, 16, -FLOOR_D / 2, hall);
-roof.clear();
+outline(new THREE.ExtrudeGeometry(tooth, { depth: FLOOR_D, bevelEnabled: false }), 0, WALL_H, -FLOOR_D / 2, hall);
+// Front wall: a band of windows with a centre bar, and two roller doors with slats
+for (let x = -28; x <= 28; x += 8) {
+  box(5, 3.6, 0.1, x, 10, FRONT, hall);
+  box(0.06, 3.6, 0.12, x, 10, FRONT, hall);
+}
+for (const x of [-20, 20]) {
+  box(10, 7.5, 0.1, x, 0, FRONT, hall);
+  for (let y = 1.25; y < 7.5; y += 1.25) box(10, 0.04, 0.12, x, y, FRONT, hall);
+}
+// Side wall facing the yard: the same band of windows
+for (let z = -20; z <= 20; z += 8) box(0.1, 3.6, 5, HALL_W / 2 + 0.06, 10, z, hall);
+// Two stacks through the roof, each with a collar
+for (const [x, h] of [[-22, 34], [-12, 30]]) {
+  drum(1.7, h - WALL_H, x, WALL_H, -14, hall, 16);
+  drum(2.1, 1, x, h - 3, -14, hall, 16);
+}
+// A silo in the yard beside the factory, with a cone top and a pipe into the wall
+drum(3.4, 18, HALL_W / 2 + 5, 0, -19, hall, 20);
+outline(new THREE.ConeGeometry(3.4, 3, 20), HALL_W / 2 + 5, 19.5, -19, hall);
+box(5, 0.5, 0.5, HALL_W / 2 + 1.2, 13, -19, hall);
 
 // Work cell: a conveyor (frame, legs, rollers, a few parcels) running between two fences
 const cell = new THREE.Group();
@@ -140,7 +159,7 @@ const layers = [
   { group: floor, lift: 0 },
   { group: cell, lift: 9, part: 'cell', anchor: new THREE.Vector3(59, 6, 10.5) },
   { group: robots, lift: 20, part: 'robot', anchor: new THREE.Vector3(53, 11, -14) },
-  { group: hall, lift: 30, part: 'factory', anchor: new THREE.Vector3(0, 22, -24) },
+  { group: hall, lift: 26, part: 'factory', anchor: new THREE.Vector3(-44, 30, -14) },
 ];
 for (const layer of layers) {
   layer.base = layer.group.position.y;
@@ -202,8 +221,8 @@ function fit() {
 }
 function aim(apart) {
   // pixels per model unit: closed fills the room, open fits the whole stack; both limited by the width on phones
-  const closed = Math.min(roomH / 62, W / 150);
-  const open = Math.min(roomH / 92, W / 165);
+  const closed = Math.min(roomH / 68, W / 150);
+  const open = Math.min(roomH / 96, W / 165);
   const scale = closed + (open - closed) * apart;
   const dist = H / (2 * scale * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   const y = 9 + apart * 15;
