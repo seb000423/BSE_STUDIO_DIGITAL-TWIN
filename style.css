@@ -16,6 +16,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* Nothing here is meant to be typed in or selected: no text cursor, no caret, no selection */
+html { cursor: default; user-select: none; caret-color: transparent; }
 body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--foreground); -webkit-font-smoothing: antialiased; }
 /* A soft glow behind the drawing; the only grid is the one on the factory floor */
 body {
@@ -64,3 +66,7 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 .label { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--foreground); opacity: 0; white-space: nowrap; text-shadow: 0 0 6px var(--background), 0 0 2px var(--background); will-change: transform, opacity; }
 .label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--line); flex: none; }
 .label i { display: block; height: 1px; background: var(--line); opacity: 0.6; flex: none; }
+
+/* "Click" sits on the floor grid, the part that responds; clicks pass through it (position set by bg.js) */
+.cue { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--foreground); border: 1px solid var(--border); border-radius: 999px; background: var(--background); }
+.cue i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
