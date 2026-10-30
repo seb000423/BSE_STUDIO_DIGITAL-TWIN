@@ -1,103 +1,122 @@
-// Background — modules spread over a blueprint floor assemble, like a crane would place them, into a factory site:
-// a sawtooth-roof hall with dock doors, an office annex, silos and stacks. A halftone field of floor tiles grows out
-// from the centre with it; once built, the site beats twice, a ripple running out from the centre through the hall and
-// the tiles. Then the tiles fade from the edges in and the cubes spread out again. One colour, fixed camera. three.js draws the scene, anime.js times it. Both load from a CDN (import map in index.html).
+// Background — a line drawing of a small factory: the hall, a work cell, a robot arm and a conveyor on one floor.
+// Scrolling through the stage lifts the parts off one another into a stacked, exploded drawing, turning the view from
+// the front to above and swinging the robot arm, with a name label tied to each part. Scrolling back puts it together.
+// Further down, the BSE logo appears as a halftone of dots, filled in from the centre as it scrolls into view.
+// three.js draws the model, anime.js runs the intro; the dots are plain SVG. Both load from a CDN; no build step.
 import * as THREE from 'three';
-import { createTimeline } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
+import { animate } from 'https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.js';
 
 const canvas = document.getElementById('bg');
+const stage = document.querySelector('.stage');
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 const dark = matchMedia('(prefers-color-scheme: dark)');
 const small = Math.min(innerWidth, innerHeight) < 640;
-const rand = (a, b) => a + Math.random() * (b - a);
-const FLOOR = -22;
-const SPAN_X = 68;
 
-// 1. The finished site. Each target is one cube: where it ends up and its size
-const targets = [];
-const add = (x, y, z, cell) => targets.push({ pos: new THREE.Vector3(x, y, z), cell });
+// 1. Drawing kit — every part is outlines only
+const ink = new THREE.LineBasicMaterial({ transparent: true });
+function outline(geometry, x = 0, y = 0, z = 0, parent) {
+  const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), ink);
+  lines.position.set(x, y, z);
+  parent?.add(lines);
+  return lines;
+}
+const box = (w, h, d, x, y, z, parent) => outline(new THREE.BoxGeometry(w, h, d), x, y + h / 2, z, parent);
+const drum = (r, h, x, y, z, parent, segments = 16) => outline(new THREE.CylinderGeometry(r, r, h, segments), x, y + h / 2, z, parent);
 
-// Hollow shell of a box of cells; `keep(i, j, k)` can leave a hole (a door)
-function shell(cols, depth, height, cell, origin, keep = () => true) {
-  const inside = (i, j, k) => i >= 0 && i < cols && k >= 0 && k < depth && j >= 0 && j < height(i);
-  for (let i = 0; i < cols; i++) {
-    for (let k = 0; k < depth; k++) {
-      for (let j = 0; j < height(i); j++) {
-        const outer = !inside(i, j + 1, k) || !inside(i - 1, j, k) || !inside(i + 1, j, k) || !inside(i, j, k - 1) || !inside(i, j, k + 1);
-        if (outer && keep(i, j, k)) add(origin.x + (i + 0.5) * cell, FLOOR + (j + 0.5) * cell, origin.z + (k + 0.5) * cell, cell);
-      }
-    }
-  }
+const model = new THREE.Group();
+
+// Floor slab with the hall's column grid marked on it
+const floor = new THREE.Group();
+box(64, 1, 40, 0, -1, 0, floor);
+const marks = [];
+for (let x = -30; x <= 30; x += 10) marks.push(x, 0.02, -20, x, 0.02, 20);
+for (let z = -20; z <= 20; z += 10) marks.push(-32, 0.02, z, 32, 0.02, z);
+floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(marks, 3)), ink));
+
+// The hall: columns and a sawtooth roof over the whole floor
+const hall = new THREE.Group();
+for (let x = -30; x <= 30; x += 10) for (const z of [-19.5, 19.5]) box(0.8, 16, 0.8, x, 0, z, hall);
+const tooth = new THREE.Shape();
+tooth.moveTo(-32, 0);
+for (let i = 0; i < 4; i++) {
+  tooth.lineTo(-32 + i * 16 + 13, 6);
+  tooth.lineTo(-32 + i * 16 + 16, 0);
+}
+tooth.lineTo(-32, 0);
+outline(new THREE.ExtrudeGeometry(tooth, { depth: 40, bevelEnabled: false }), 0, 16, -20, hall);
+box(64, 0.6, 40, 0, 15.4, 0, hall);
+
+// Conveyor along the front: frame, legs, rollers and a few parcels
+const conveyor = new THREE.Group();
+box(46, 0.8, 4, 4, 4, 12, conveyor);
+for (let x = -16; x <= 24; x += 8) for (const z of [10.4, 13.6]) box(0.5, 4, 0.5, x, 0, z, conveyor);
+for (let x = -18; x <= 26; x += 2.2) {
+  const roller = drum(0.35, 3.6, x, 0, 0, conveyor, 8);
+  roller.rotation.x = Math.PI / 2;
+  roller.position.set(x, 5.1, 12);
+}
+for (const x of [-12, 0, 13]) box(3, 2.2, 2.6, x, 5.5, 12, conveyor);
+
+// Work cell: a fenced square with corner posts, mesh rails and a gate
+const cell = new THREE.Group();
+const CX = -12;
+const CZ = -5;
+for (const [dx, dz] of [[-9, -8], [9, -8], [-9, 8], [9, 8]]) box(0.5, 9, 0.5, CX + dx, 0, CZ + dz, cell);
+for (const y of [0.5, 4.5, 9]) {
+  box(18, 0.2, 0.2, CX, y, CZ - 8, cell);
+  box(0.2, 0.2, 16, CX - 9, y, CZ, cell);
+  box(0.2, 0.2, 16, CX + 9, y, CZ, cell);
+  box(10, 0.2, 0.2, CX - 4, y, CZ + 8, cell);
+}
+for (let x = -8; x <= 8; x += 2) box(0.05, 9, 0.05, CX + x, 0, CZ - 8, cell);
+
+// Robot arm in the cell — base, turret, upper arm, forearm, wrist, gripper; joints are pivots so it can move
+const robot = new THREE.Group();
+robot.position.set(CX + 1, 0, CZ);
+drum(2.6, 1.2, 0, 0, 0, robot, 20);
+const turret = new THREE.Group();
+turret.position.y = 1.2;
+robot.add(turret);
+drum(1.7, 2.4, 0, 0, 0, turret, 16);
+const shoulder = new THREE.Group();
+shoulder.position.y = 3;
+turret.add(shoulder);
+// A joint pin lying across the arm
+const pin = (r, parent) => {
+  const axle = new THREE.Group();
+  axle.rotation.x = Math.PI / 2;
+  drum(r, 2.4, 0, -1.2, 0, axle, 12);
+  parent.add(axle);
+};
+pin(1.1, shoulder);
+box(1.4, 9, 1.4, 0, 0, 0, shoulder);
+const elbow = new THREE.Group();
+elbow.position.y = 9;
+shoulder.add(elbow);
+pin(0.9, elbow);
+box(1.1, 7.5, 1.1, 0, 0, 0, elbow);
+const wrist = new THREE.Group();
+wrist.position.y = 7.5;
+elbow.add(wrist);
+drum(0.6, 1.4, 0, 0, 0, wrist, 12);
+box(2.4, 0.5, 0.8, 0, 1.4, 0, wrist);
+box(0.4, 1.6, 0.8, -1, 1.9, 0, wrist);
+box(0.4, 1.6, 0.8, 1, 1.9, 0, wrist);
+
+// Layers, bottom to top, with how far each lifts when the drawing is fully apart
+const layers = [
+  { group: floor, lift: 0 },
+  { group: conveyor, lift: 12, part: 'conveyor', anchor: new THREE.Vector3(27, 5, 12) },
+  { group: robot, lift: 26, part: 'robot', anchor: new THREE.Vector3(3, 18, -5) },
+  { group: cell, lift: 40, part: 'cell', anchor: new THREE.Vector3(-3, 9, -13) },
+  { group: hall, lift: 60, part: 'factory', anchor: new THREE.Vector3(32, 22, -20) },
+];
+for (const layer of layers) {
+  layer.base = layer.group.position.y;
+  model.add(layer.group);
 }
 
-// Main hall — sawtooth roof, two dock doors at the front
-const C = 3;
-const COLS = 24;
-const DEPTH = 10;
-const bay = (i) => 7 + Math.floor((i % 6) / 2);
-shell(COLS, DEPTH, bay, C, { x: -COLS * C / 2, z: -DEPTH * C - 4.5 }, (i, j, k) =>
-  !(k === DEPTH - 1 && j < 3 && ((i >= 2 && i <= 4) || (i >= 19 && i <= 21))),
-);
-
-// Office annex on the left
-shell(6, 6, () => 4, C, { x: -COLS * C / 2 - 6 * C - 1, z: -6 * C - 4.5 });
-
-// Two silos on the right, with cone tops
-const S = 1.5;
-for (const [cx, cz] of [[44, -26], [52, -16]]) {
-  for (let j = 0; j < 20; j++) {
-    const r = j < 17 ? 3.4 : 3.4 - (j - 16) * 0.9;
-    for (let x = -4; x <= 4; x++) {
-      for (let z = -4; z <= 4; z++) {
-        const d = Math.hypot(x * S, z * S);
-        if (Math.abs(d - r) < S * 0.55 || (j === 19 && d < r)) add(cx + x * S, FLOOR + (j + 0.5) * S, cz + z * S, S);
-      }
-    }
-  }
-}
-
-// Two stacks behind the hall, and a pipe run from the silos into the hall
-for (const [cx, cz, h] of [[-18, -40, 30], [-8, -40, 26]]) {
-  for (let j = 0; j < h; j++) {
-    for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) add(cx + dx * S, FLOOR + (j + 0.5) * S, cz + dz * S, S);
-  }
-}
-for (let x = 36.5; x <= 46; x += 1) add(x, FLOOR + 20, -22, 1);
-
-// 2. Where each cube waits when spread out: a free slot on a 4-unit grid in a low band hugging the site
-const slots = [];
-for (let x = -60; x <= 60; x += 4) {
-  for (let y = FLOOR + 4; y <= FLOOR + 36; y += 4) for (let z = -48; z <= 8; z += 4) slots.push([x, y, z]);
-}
-for (let i = slots.length - 1; i > 0; i--) {
-  const j = Math.floor(Math.random() * (i + 1));
-  [slots[i], slots[j]] = [slots[j], slots[i]];
-}
-const highest = Math.max(...targets.map((t) => t.pos.y));
-const cubes = targets.map((target, i) => ({
-  ...target,
-  away: new THREE.Vector3(...slots[i % slots.length]),
-  size: 0.5 + 1.6 * Math.random() ** 3,
-  turn: new THREE.Euler(rand(-0.6, 0.6), rand(-1.5, 1.5), rand(-0.6, 0.6)),
-  bob: rand(0, Math.PI * 2),
-  rise: (target.pos.y - FLOOR) / (highest - FLOOR), // 0 at the floor, 1 at the top
-  t: 0, // 0 = spread out, 1 = in place
-  pulse: 0, // the beat: 0 at rest, 1 at the peak
-}));
-
-// Halftone floor: one flat tile per grid cell, biggest at the centre of the site and fading out towards the edges
-const CENTRE = new THREE.Vector3(0, FLOOR, -18);
-const tiles = [];
-for (let x = -86; x <= 86; x += 4) {
-  for (let z = -78; z <= 30; z += 4) {
-    const d = Math.hypot(x - CENTRE.x, (z - CENTRE.z) * 1.3) / 95;
-    if (d < 1) tiles.push({ pos: new THREE.Vector3(x, FLOOR, z), size: 3.5 * (1 - d) ** 1.2, s: 0, pulse: 0 });
-  }
-}
-// Distance from the centre, 0…1, sets when the ripple reaches each cube or tile
-const reach = (item) => Math.min(1, item.pos.distanceTo(CENTRE) / 95);
-
-// 3. Scene
+// 2. Scene
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -106,133 +125,169 @@ try {
   canvas.remove();
   throw new Error('BSE background: WebGL unavailable');
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 1, 600);
-scene.add(new THREE.AmbientLight(0xffffff, 1.6));
-const sun = new THREE.DirectionalLight(0xffffff, 1.8);
-sun.position.set(30, 60, 80);
-scene.add(sun);
+scene.add(model);
+const camera = new THREE.PerspectiveCamera(32, 1, 1, 1000);
 
-// Turned a little so the hall shows its side; this view never moves
-const group = new THREE.Group();
-group.rotation.y = -0.2;
-scene.add(group);
-const material = new THREE.MeshLambertMaterial();
-const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, cubes.length);
-const tileMaterial = new THREE.MeshLambertMaterial();
-const floor = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.35, 1).translate(0, 0.175, 0), tileMaterial, tiles.length);
-group.add(mesh, floor);
-
-// Blueprint floor grid
-const grid = new THREE.GridHelper(SPAN_X * 2 + 40, (SPAN_X * 2 + 40) / 4);
-grid.position.y = FLOOR - 0.01;
-grid.material.transparent = true;
-grid.material.opacity = 0.7;
-group.add(grid);
-
-// One grey for every cube, close to the page colour so the text in front always wins; the light gives the faces depth.
-// Floor tiles a step darker so the halftone reads on the floor.
 function paint() {
-  const [cube, tile, line] = dark.matches ? [0.26, 0.34, 0.24] : [0.86, 0.72, 0.86];
-  material.color.setRGB(cube, cube, cube, THREE.SRGBColorSpace);
-  tileMaterial.color.setRGB(tile, tile, tile, THREE.SRGBColorSpace);
-  grid.material.color.setRGB(line, line, line, THREE.SRGBColorSpace);
+  ink.color.set(getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#333');
 }
 
-const m = new THREE.Matrix4();
-const q = new THREE.Quaternion();
-const qa = new THREE.Quaternion();
-const upright = new THREE.Quaternion();
-const p = new THREE.Vector3();
-const s = new THREE.Vector3();
+// 3. Labels — one per part, a dot on the part and a leader line out to a column on the right
+const labels = [...document.querySelectorAll('.stage .label')].map((el) => {
+  const text = document.createElement('b');
+  const lead = document.createElement('i');
+  el.append(lead, text);
+  return { el, text, lead, layer: layers.find((l) => l.part === el.dataset.part) };
+});
+function relabel() {
+  const lang = document.documentElement.lang === 'en' ? 'en' : 'ko';
+  for (const label of labels) label.text.textContent = label.el.dataset[lang];
+}
+new MutationObserver(relabel).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+relabel();
 
-function place(sec) {
-  cubes.forEach((cube, i) => {
-    const t = cube.t;
-    // Right-angle path, like a crane: travel across first, then lower straight down into place
-    const across = Math.min(t * 2, 1);
-    const down = Math.max(t * 2 - 1, 0);
-    p.set(
-      cube.away.x + (cube.pos.x - cube.away.x) * across,
-      cube.away.y + Math.sin(sec * 0.6 + cube.bob) * 0.4 * (1 - t) + (cube.pos.y - cube.away.y) * down,
-      cube.away.z + (cube.pos.z - cube.away.z) * across,
-    );
-    q.slerpQuaternions(qa.setFromEuler(cube.turn), upright, across);
-    s.setScalar((cube.size + (cube.cell * 0.92 - cube.size) * t) * (1 + cube.pulse * 0.16));
-    mesh.setMatrixAt(i, m.compose(p, q, s));
+// 4. Scroll → one progress value: 0 at the top of the page, 1 at the end of the stage
+const clamp = (v) => Math.min(1, Math.max(0, v));
+const smooth = (v) => v * v * (3 - 2 * v);
+const span = (v, a, b) => smooth(clamp((v - a) / (b - a)));
+function progress() {
+  if (still.matches) return 0.6;
+  const end = stage.offsetTop + stage.offsetHeight - innerHeight;
+  return clamp(scrollY / end);
+}
+
+const intro = { k: still.matches ? 1 : 0 }; // the drawing fading and settling in on first load
+const p3 = new THREE.Vector3();
+function draw() {
+  const p = progress();
+  const apart = span(p, 0.12, 0.72); // how far the layers have lifted
+  const look = span(p, 0, 0.3); // view moves from under the title to the middle of the screen
+  const gone = span(p, 0.86, 1); // the drawing fades as the logo section comes up
+
+  for (const layer of layers) layer.group.position.y = layer.base + layer.lift * apart + (1 - intro.k) * layer.lift * 0.15;
+  turret.rotation.y = -0.6 + apart * 1.4;
+  shoulder.rotation.z = 0.35 - apart * 0.7;
+  elbow.rotation.z = 1.1 + apart * 0.5;
+  wrist.rotation.z = 0.4 - apart * 0.6;
+
+  // Camera swings from a low front three-quarter view up to a higher one as it comes apart
+  const narrow = camera.aspect < 1;
+  const yaw = -0.55 + apart * 0.25;
+  const pitch = 0.32 + apart * 0.38;
+  const dist = (narrow ? 310 : 150) + apart * (narrow ? 140 : 90);
+  // on phones the drawing sits a little left, leaving room for the labels on the right
+  const centre = new THREE.Vector3(narrow ? apart * 16 : 0, 6 + apart * 34, 0);
+  camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, centre.y + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
+  // At the top of the page the drawing sits low, under the title and buttons
+  camera.lookAt(centre.x, centre.y + (1 - look) * (narrow ? 44 : 30), centre.z);
+  ink.opacity = (dark.matches ? 0.7 : 0.62) * intro.k * (1 - gone);
+  renderer.render(scene, camera);
+
+  // Labels: anchor projected to the screen, text in a column to the right of the drawing
+  const column = narrow ? innerWidth - 16 : Math.min(innerWidth - 40, innerWidth / 2 + 380);
+  const shown = span(p, 0.3, 0.5) * (1 - gone);
+  for (const label of labels) {
+    p3.copy(label.layer.anchor);
+    p3.y += label.layer.lift * apart;
+    p3.applyMatrix4(model.matrixWorld).project(camera);
+    label.x = (p3.x * 0.5 + 0.5) * innerWidth;
+    label.y = (-p3.y * 0.5 + 0.5) * innerHeight;
+  }
+  // Keep the labels at least a line apart, top to bottom
+  [...labels].sort((a, b) => a.y - b.y).reduce((above, label) => {
+    label.y = Math.max(label.y, above + 22);
+    return label.y;
+  }, -Infinity);
+  labels.forEach((label, i) => {
+    const { x, y } = label;
+    const width = label.text.offsetWidth;
+    const reach = Math.max(12, column - width - 13 - x);
+    label.lead.style.width = `${reach}px`;
+    label.el.style.transform = `translate(${x - 2.5}px, ${y - 9}px)`;
+    label.el.style.opacity = String(span(shown, i * 0.12, i * 0.12 + 0.5));
   });
-  mesh.instanceMatrix.needsUpdate = true;
-  tiles.forEach((tile, i) => {
-    const k = Math.max(tile.size * tile.s * (1 + tile.pulse * 0.9), 0.0001);
-    s.set(k, 1 + tile.pulse * 2, k);
-    floor.setMatrixAt(i, m.compose(tile.pos, upright, s));
-  });
-  floor.instanceMatrix.needsUpdate = true;
 }
 
 function fit() {
-  const w = innerWidth;
-  const h = innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  // Looking down at the floor a little, aimed above the site so it fills the lower half, under the title and buttons;
-  // far enough back that the whole site fits across wide screens
-  const back = camera.aspect < 1 ? 230 : Math.max(140, 72 / (Math.tan(THREE.MathUtils.degToRad(20)) * camera.aspect));
-  camera.position.set(0, 40, back);
-  camera.lookAt(0, camera.aspect < 1 ? 34 : 26, -10);
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-}
-
-function draw(time = 0) {
-  place(still.matches ? 0 : time / 1000);
-  renderer.render(scene, camera);
 }
 
 paint();
 fit();
+draw();
 addEventListener('resize', () => {
   fit();
-  if (still.matches) draw();
+  draw();
 });
+addEventListener('scroll', () => requestAnimationFrame(draw), { passive: true });
 dark.addEventListener('change', () => {
   paint();
-  if (still.matches) draw();
+  draw();
 });
+if (!still.matches) animate(intro, { k: 1, duration: 1600, ease: 'outCubic', onUpdate: draw });
 
-// 4. Motion — spread out, assemble from the floor up while the tiles grow from the centre, two beats, then the tiles
-// fade from the edges in and the cubes spread out again
-let timeline = null;
-function start() {
-  timeline?.pause();
-  if (still.matches) {
-    cubes.forEach((cube) => (cube.t = 1));
-    tiles.forEach((tile) => (tile.s = 1));
-    draw();
-    return;
-  }
-  timeline = createTimeline({ loop: true })
-    .add(cubes, {
-      t: 1,
-      duration: 1500,
-      ease: 'inOutCubic',
-      delay: (cube) => cube.rise * 1800 + ((cube.pos.x + SPAN_X) / (SPAN_X * 2)) * 500,
-    }, 3200)
-    .add(tiles, { s: 1, duration: 900, ease: 'outQuad', delay: (tile) => reach(tile) * 2200 }, 3400);
-  const both = [...cubes, ...tiles];
-  const ripple = (item) => reach(item) * 700;
-  for (const [peak, gap] of [[1, 300], [0.75, 120]]) {
-    timeline
-      .add(both, { pulse: peak, duration: 240, ease: 'outQuad', delay: ripple }, `+=${gap}`)
-      .add(both, { pulse: 0, duration: 420, ease: 'inOutQuad', delay: ripple });
-  }
-  timeline
-    .add(tiles, { s: 0, duration: 700, ease: 'inQuad', delay: (tile) => (1 - reach(tile)) * 1200 }, '+=1800')
-    .add(cubes, { t: 0, duration: 1500, ease: 'inOutCubic', delay: (cube) => (1 - cube.rise) * 900 }, '<<+=300');
-  renderer.setAnimationLoop(draw);
+// 5. The BSE logo as dots — traced from the header SVG (42×38), letters punched out, filled in from the centre on scroll
+const dots = document.querySelector('.mark .dots');
+const STEP = 1.1;
+const LW = 42;
+const LH = 38;
+const RES = 4;
+const trace = document.createElement('canvas');
+trace.width = LW * RES;
+trace.height = LH * RES;
+const g = trace.getContext('2d', { willReadFrequently: true });
+g.filter = `blur(${RES * 0.6}px)`;
+g.scale(RES, RES);
+g.lineWidth = 2.2;
+g.lineJoin = 'round';
+g.beginPath();
+g.moveTo(21, 8);
+g.lineTo(8, 30);
+g.lineTo(34, 30);
+g.closePath();
+g.stroke();
+const VERTS = [['B', 21, 8], ['S', 8, 30], ['E', 34, 30]];
+for (const [, x, y] of VERTS) {
+  g.beginPath();
+  g.arc(x, y, 7, 0, Math.PI * 2);
+  g.fill();
 }
-still.addEventListener('change', () => {
-  renderer.setAnimationLoop(null);
-  start();
-});
-start();
+g.globalCompositeOperation = 'destination-out';
+g.font = '800 10px Arial, Helvetica, sans-serif';
+g.textAlign = 'center';
+g.textBaseline = 'middle';
+for (const [letter, x, y] of VERTS) g.fillText(letter, x, y + 0.5);
+const pixels = g.getImageData(0, 0, trace.width, trace.height).data;
+dots.setAttribute('viewBox', `-1 -1 ${LW + 2} ${LH + 2}`);
+const svgNS = 'http://www.w3.org/2000/svg';
+const sizes = [];
+for (let y = STEP / 2; y < LH; y += STEP) {
+  for (let x = STEP / 2; x < LW; x += STEP) {
+    const a = pixels[(Math.round(y * RES) * trace.width + Math.round(x * RES)) * 4 + 3] / 255;
+    if (a < 0.06) continue;
+    const dot = document.createElementNS(svgNS, 'circle');
+    dot.setAttribute('cx', x.toFixed(2));
+    dot.setAttribute('cy', y.toFixed(2));
+    dot.setAttribute('r', '0');
+    dot.dataset.d = String(Math.hypot(x - 21, y - 22) / 24);
+    dots.append(dot);
+    sizes.push(STEP * 0.48 * (0.25 + 0.75 * a));
+  }
+}
+const circles = [...dots.children];
+// 0 when the logo's top reaches the bottom of the screen, 1 when its centre reaches the middle
+function fillDots() {
+  const box = dots.getBoundingClientRect();
+  const q = still.matches ? 1 : clamp((innerHeight - box.top) / (innerHeight / 2 + box.height / 2));
+  circles.forEach((dot, i) => {
+    const own = smooth(clamp((q - Number(dot.dataset.d) * 0.45) / 0.55));
+    dot.setAttribute('r', (sizes[i] * own).toFixed(3));
+  });
+}
+fillDots();
+addEventListener('scroll', () => requestAnimationFrame(fillDots), { passive: true });
+addEventListener('resize', fillDots);

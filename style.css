@@ -1,18 +1,22 @@
-/* Same tokens as BSE Studio (styles/drive.css) — neutral greys, near-square corners */
+/* Tokens after BSE Studio (styles/drive.css), on a warm paper grey with a drafting grid; near-square corners */
 :root {
   --radius: 0.125rem;
-  --background: oklch(1 0 0);
+  --background: oklch(0.88 0.006 85);
+  --grid: oklch(0.2 0.01 85 / 7%);
+  --line: #35332f; /* hex: bg.js hands it to three.js */
   --foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
+  --border: oklch(0.2 0.01 85 / 14%);
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.145 0 0);
+    --background: oklch(0.2 0.004 85);
+    --grid: oklch(0.95 0.01 85 / 6%);
+    --line: #d8d4cb;
     --foreground: oklch(0.985 0 0);
     --primary: oklch(0.922 0 0);
     --primary-foreground: oklch(0.205 0 0);
@@ -24,7 +28,14 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--foreground); -webkit-font-smoothing: antialiased; }
+/* 24px drafting grid, fixed so it stays put while the page scrolls */
+body {
+  background: var(--background);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-attachment: fixed;
+}
 body { display: flex; flex-direction: column; min-height: 100%; }
 
 /* Header — logo centered; equal side columns keep it truly centered whatever sits on the right */
@@ -42,7 +53,7 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 .lang-toggle button.on { background: var(--primary); color: var(--primary-foreground); }
 
 /* Body — title, tagline, two entry points; sits in the upper part so the factory in the background has the lower half */
-.welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 16px; padding-top: max(40px, 13vh); text-align: center; }
+.welcome { flex: none; min-height: calc(100vh - 57px); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 16px; padding-top: max(40px, 13vh); text-align: center; }
 .welcome .title { font-size: 30px; font-weight: 700; margin-bottom: 4px; }
 .welcome h1 { margin: 0; font-size: 24px; font-weight: 700; }
 .row-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
@@ -53,6 +64,19 @@ body { display: flex; flex-direction: column; min-height: 100%; }
 
 /* Cube-logo background (bg.js) sits behind everything and never takes clicks */
 #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-.bar, .welcome { position: relative; z-index: 1; }
+.bar, .welcome, .stage, .mark { position: relative; z-index: 1; }
+.bar { position: sticky; top: 0; z-index: 2; }
 .bar { background: var(--background); }
 .welcome .title, .welcome h1, .hint { text-shadow: 0 0 10px var(--background), 0 0 4px var(--background); }
+
+/* Scroll stage: the line model comes apart over this height; labels follow the parts (positions set by bg.js) */
+.stage { height: 260vh; flex: none; }
+.labels { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.label { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--foreground); opacity: 0; white-space: nowrap; will-change: transform, opacity; }
+.label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--line); flex: none; }
+.label i { display: block; height: 1px; background: var(--line); opacity: 0.6; flex: none; }
+
+/* Logo section: the BSE mark as dots, nothing around it */
+.mark { height: 100vh; margin-top: -40vh; flex: none; display: grid; place-items: center; }
+.mark .dots { width: min(72vw, 520px); height: auto; overflow: visible; }
+.mark .dots circle { fill: var(--line); }
